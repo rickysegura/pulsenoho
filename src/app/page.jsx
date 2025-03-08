@@ -38,7 +38,7 @@ export default function Home() {
           <main className="flex-1">
             <Card className="bg-white/5 backdrop-blur-sm border-white/10 mb-6">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Vibe Heatmap</CardTitle>
+                <CardTitle className="text-xl font-semibold text-white">Vibe Heatmap</CardTitle>
               </CardHeader>
               <CardContent>
                 <Heatmap isLoaded={isMapLoaded} />
@@ -47,7 +47,7 @@ export default function Home() {
             <Card className="bg-white/5 backdrop-blur-sm border-white/10">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-2xl font-semibold">Venues</CardTitle>
+                  <CardTitle className="text-2xl font-semibold text-white">Venues</CardTitle>
                   <Tabs value={sortMode} onValueChange={setSortMode}>
                     <TabsList className="bg-white/10">
                       <TabsTrigger value="hot" className="text-white">Hot</TabsTrigger>
@@ -64,7 +64,7 @@ export default function Home() {
           <aside className="w-full md:w-80 flex flex-col gap-6">
             <Card className="bg-white/5 backdrop-blur-sm border-white/10">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Your Profile</CardTitle>
+                <CardTitle className="text-xl font-semibold text-white">Your Profile</CardTitle>
               </CardHeader>
               <CardContent>
                 <UserProfile />
@@ -72,7 +72,7 @@ export default function Home() {
             </Card>
             <Card className="bg-white/5 backdrop-blur-sm border-white/10">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Join the Party</CardTitle>
+                <CardTitle className="text-xl font-semibold text-white">Join the Party</CardTitle>
               </CardHeader>
               <CardContent>
                 <AuthComponent />
