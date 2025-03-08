@@ -97,13 +97,16 @@ export default function VenueList({ sortMode }) {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'venues'), (snapshot) => {
-      let venueData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (sortMode === 'hot') {
-        venueData.sort((a, b) => (b.feedbackCount || 0) - (a.feedbackCount || 0));
-      } else if (sortMode === 'new') {
-        venueData.sort((a, b) => b.id.localeCompare(a.id));
-      }
-      setVenues(venueData);
+      const venueData = snapshot.docs.map(doc => {
+        const venue = { id: doc.id, ...doc.data() };
+        const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
+        onSnapshot(feedbacksRef, (feedbackSnap) => {
+          venue.feedbackCount = feedbackSnap.docs.length;
+          setVenues(prev => prev.map(v => v.id === venue.id ? venue : v));
+        });
+        return venue;
+      });
+      setVenues(venueData.sort((a, b) => sortMode === 'hot' ? (b.feedbackCount || 0) - (a.feedbackCount || 0) : b.id.localeCompare(a.id)));
     });
     return () => unsubscribe();
   }, [sortMode]);
