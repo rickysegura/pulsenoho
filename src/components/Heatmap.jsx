@@ -83,7 +83,7 @@ export default function Heatmap({ isLoaded }) {
   }
 
   return (
-    <div className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg p-4">
+    <div className="relative bg-white/10 backdrop-blur-lg">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={center}
@@ -123,9 +123,6 @@ export default function Heatmap({ isLoaded }) {
           />
         ))}
       </GoogleMap>
-      <div className="absolute top-2 right-2 bg-white/20 text-white text-xs px-2 py-1 rounded">
-        Hotter = More Vibes
-      </div>
     </div>
   );
 }

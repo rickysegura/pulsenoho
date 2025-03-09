@@ -21,7 +21,7 @@ export default function Home() {
         <div className="absolute top-0 left-0 w-full p-6">
           <div className="bg-black/10 backdrop-blur-sm inline-block px-4 py-2 rounded-lg">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">
-              North Hollywood Live 🚦
+              NoHo Live 🚦
             </h1>
             <p className="text-lg md:text-xl text-gray-200 drop-shadow-md">
               Vibe check venues in advance
