@@ -14,24 +14,25 @@ export default function Home() {
   const { isMapLoaded } = useContext(MapContext);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col p-4">
-      <header className="w-full mx-auto mb-6">
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg p-6 text-center">
-          <h1 className="text-4xl font-bold tracking-tight">North Hollywood Live 🚦</h1>
-          <p className="text-lg text-gray-300 mt-2">Vibe check venues in advance</p>
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+      {/* Hero Section with Heatmap */}
+      <div className="relative w-full">
+        <Heatmap isLoaded={isMapLoaded} />
+        <div className="absolute top-0 left-0 w-full p-6">
+          <div className="bg-black/10 backdrop-blur-sm inline-block px-4 py-2 rounded-lg">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">
+              North Hollywood Live 🚦
+            </h1>
+            <p className="text-lg md:text-xl text-gray-200 drop-shadow-md">
+              Vibe check venues in advance
+            </p>
+          </div>
         </div>
-      </header>
+      </div>
 
-      <div className="w-full mx-auto flex flex-col md:flex-row gap-6">
+      {/* Main Content */}
+      <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-6">
         <main className="flex-1">
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 mb-6">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white">Vibe Heatmap</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Heatmap isLoaded={isMapLoaded} />
-            </CardContent>
-          </Card>
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">Venues</CardTitle>
@@ -60,6 +61,8 @@ export default function Home() {
           </Card>
         </aside>
       </div>
+
+      {/* Footer */}
       <Footer />
     </div>
   );
