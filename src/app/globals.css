@@ -8,6 +8,12 @@
 @tailwind components;
 @tailwind utilities;
 
+.heatmap-label {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
 body {
   @apply bg-gray-900 text-white;
 }

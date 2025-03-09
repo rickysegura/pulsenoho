@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firest
 import { db } from '../lib/firebase';
 import StatusUpdateForm from './StatusUpdateForm';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 
 function VenueItem({ venue }) {
@@ -34,14 +34,11 @@ function VenueItem({ venue }) {
     const qAll = query(feedbacksRef);
     const unsubscribeAll = onSnapshot(qAll, (snapshot) => {
       const allRatings = snapshot.docs.map(doc => doc.data().rating);
-      const allComments = snapshot.docs.map(doc => {
-        const timestamp = doc.data().timestamp;
-        return {
-          userId: doc.data().userId,
-          comment: doc.data().comment || 'No comment',
-          timestamp: timestamp && timestamp.toDate ? timestamp.toDate().toLocaleTimeString() : 'N/A',
-        };
-      });
+      const allComments = snapshot.docs.map(doc => ({
+        userId: doc.data().userId,
+        comment: doc.data().comment || 'No comment',
+        timestamp: doc.data().timestamp && doc.data().timestamp.toDate ? doc.data().timestamp.toDate().toLocaleTimeString() : 'N/A',
+      }));
       if (allRatings.length > 0) {
         setHistoricalScore((allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(1));
       }
@@ -92,24 +89,16 @@ function VenueItem({ venue }) {
   );
 }
 
-export default function VenueList({ sortMode }) {
+export default function VenueList() {
   const [venues, setVenues] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'venues'), (snapshot) => {
-      const venueData = snapshot.docs.map(doc => {
-        const venue = { id: doc.id, ...doc.data() };
-        const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
-        onSnapshot(feedbacksRef, (feedbackSnap) => {
-          venue.feedbackCount = feedbackSnap.docs.length;
-          setVenues(prev => prev.map(v => v.id === venue.id ? venue : v));
-        });
-        return venue;
-      });
-      setVenues(venueData.sort((a, b) => sortMode === 'hot' ? (b.feedbackCount || 0) - (a.feedbackCount || 0) : b.id.localeCompare(a.id)));
+      const venueData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setVenues(venueData);
     });
     return () => unsubscribe();
-  }, [sortMode]);
+  }, []);
 
   return (
     <Card className="bg-transparent border-none">
