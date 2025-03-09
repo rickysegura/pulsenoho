@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { GoogleMap, HeatmapLayer, Marker } from '@react-google-maps/api';
 import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 const mapContainerStyle = {
   width: '100%',
@@ -29,61 +30,89 @@ const mapStyles = [
 ];
 
 export default function Heatmap({ isLoaded }) {
+  const { currentUser } = useAuth();
   const [heatmapData, setHeatmapData] = useState([]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !currentUser) {
+      setHeatmapData([]);
+      return;
+    }
 
     let venueData = [];
+    const feedbackUnsubscribers = []; // Store feedback listener unsubscribers
 
-    const unsubscribe = onSnapshot(collection(db, 'venues'), (snapshot) => {
-      venueData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || 'Unnamed Venue', // Fallback at source
-          lat: data.lat,
-          lng: data.lng,
-          feedbackCount: 0,
-        };
-      });
-
-      // Set initial heatmap data
-      setHeatmapData(venueData.map(v => ({
-        location: new google.maps.LatLng(v.lat, v.lng),
-        weight: 1,
-        name: v.name,
-      })));
-
-      // Update feedback counts
-      venueData.forEach(venue => {
-        const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
-        const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
-        const q = query(feedbacksRef, where('timestamp', '>', oneHourAgo));
-
-        onSnapshot(q, (feedbackSnapshot) => {
-          const feedbackCount = feedbackSnapshot.docs.length;
-          venue.feedbackCount = feedbackCount;
-          setHeatmapData(venueData.map(v => ({
-            location: new google.maps.LatLng(v.lat, v.lng),
-            weight: v.feedbackCount > 0 ? v.feedbackCount * 5 : 1,
-            name: v.name,
-          })));
-        }, (error) => {
-          console.error(`Error fetching feedbacks for ${venue.id}:`, error);
+    const unsubscribeVenues = onSnapshot(
+      collection(db, 'venues'),
+      (snapshot) => {
+        venueData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || 'Unnamed Venue',
+            lat: data.lat,
+            lng: data.lng,
+            feedbackCount: 0,
+          };
         });
-      });
-    });
 
-    return () => unsubscribe();
-  }, [isLoaded]);
+        // Clear previous feedback listeners
+        feedbackUnsubscribers.forEach((unsub) => unsub());
+        feedbackUnsubscribers.length = 0;
+
+        // Set initial heatmap data
+        setHeatmapData(
+          venueData.map((v) => ({
+            location: new google.maps.LatLng(v.lat, v.lng),
+            weight: 1,
+            name: v.name,
+          }))
+        );
+
+        // Update feedback counts
+        venueData.forEach((venue) => {
+          const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
+          const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
+          const q = query(feedbacksRef, where('timestamp', '>', oneHourAgo));
+
+          const unsubscribeFeedback = onSnapshot(
+            q,
+            (feedbackSnapshot) => {
+              const feedbackCount = feedbackSnapshot.docs.length;
+              venue.feedbackCount = feedbackCount;
+              setHeatmapData(
+                venueData.map((v) => ({
+                  location: new google.maps.LatLng(v.lat, v.lng),
+                  weight: v.feedbackCount > 0 ? v.feedbackCount * 5 : 1,
+                  name: v.name,
+                }))
+              );
+            },
+            (error) => {
+              console.error(`Error fetching feedbacks for ${venue.id}:`, error);
+            }
+          );
+
+          feedbackUnsubscribers.push(unsubscribeFeedback);
+        });
+      },
+      (error) => {
+        console.error('Error fetching venues:', error);
+      }
+    );
+
+    return () => {
+      unsubscribeVenues();
+      feedbackUnsubscribers.forEach((unsub) => unsub());
+    };
+  }, [isLoaded, currentUser]); // Add currentUser to dependencies
 
   if (!isLoaded) {
     return <p className="text-gray-400 text-center">Loading vibe heatmap...</p>;
   }
 
   return (
-    <div className="relative bg-white/10 backdrop-blur-lg">
+    <div className="relative bg-white/10 backdrop-blur-lg rounded-lg">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={center}
@@ -114,7 +143,7 @@ export default function Heatmap({ isLoaded }) {
             key={index}
             position={{ lat: point.location.lat(), lng: point.location.lng() }}
             label={{
-              text: point.name || 'Unknown', // Fallback here too
+              text: point.name || 'Unknown',
               color: '#ffffff',
               fontSize: '14px',
               fontWeight: 'bold',

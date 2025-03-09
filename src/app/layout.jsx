@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <AuthProvider>
-        <ClientLayout>{children}</ClientLayout>
+          <ClientLayout>{children}</ClientLayout>
         </AuthProvider>
       </body>
     </html>

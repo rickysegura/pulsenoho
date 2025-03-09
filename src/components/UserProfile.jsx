@@ -20,6 +20,7 @@ export default function UserProfile() {
   const [favoriteVenueName, setFavoriteVenueName] = useState('');
   const [followers, setFollowers] = useState([]); // Add followers state
   const [following, setFollowing] = useState([]); // Add following state
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!currentUser) {
@@ -45,6 +46,7 @@ export default function UserProfile() {
         setFavoriteVenueId(data.favoriteVenueId || '');
         setFollowers(data.followers || []); // Set followers
         setFollowing(data.following || []); // Set following
+        setIsAdmin(data.isAdmin);
 
         // Fetch favorite venue name
         if (data.favoriteVenueId) {
@@ -124,6 +126,12 @@ export default function UserProfile() {
           Followers: <span className="text-white">{followers.length}</span> | Following:{' '}
           <span className="text-white">{following.length}</span>
         </p>
+        {isAdmin && (
+          <Link href="/admin" className="text-gray-300 hover:text-white text-sm underline">
+            Admin Dashboard
+          </Link>
+        )}
+        <br />
         <Link href={`/profile/${currentUser.uid}`} className="text-gray-300 hover:text-white text-sm underline">
           View My Profile
         </Link>

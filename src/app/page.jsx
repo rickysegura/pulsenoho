@@ -28,7 +28,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       {/* Hero Section with Heatmap */}
-      <div className="relative w-full">
+      <div className="relative w-full px-4">
         <Heatmap isLoaded={isMapLoaded} />
         <div className="absolute top-0 left-0 w-full p-6">
           <div className="bg-black/10 backdrop-blur-sm inline-block px-4 py-2 rounded-lg">

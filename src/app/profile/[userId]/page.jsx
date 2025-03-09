@@ -29,12 +29,22 @@ export default function UserProfile() {
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
+        let favoriteVenueName = '';
+
+        // Fetch venue name if favoriteVenueId exists
+        if (data.favoriteVenueId) {
+          const venueRef = doc(db, 'venues', data.favoriteVenueId);
+          const venueSnap = await getDoc(venueRef);
+          favoriteVenueName = venueSnap.exists() ? venueSnap.data().name : 'Unknown Venue';
+        }
+
         setProfile({
           id: userId,
           username: data.username || 'Anonymous',
           photoURL: data.photoURL || '',
           bio: data.bio || '',
-          favoriteVenueId: data.favoriteVenueId || '',
+          favoriteVenueId: data.favoriteVenueId || '', // Keep ID for reference if needed
+          favoriteVenueName, // Add venue name to profile
           points: data.points || 0,
           followers: data.followers || [],
         });
@@ -115,7 +125,7 @@ export default function UserProfile() {
           </p>
           {profile.favoriteVenueId && (
             <p className="text-gray-300 text-sm">
-              Favorite Spot: <span className="text-white">{profile.favoriteVenueId}</span>
+              Favorite Spot: <span className="text-white">{profile.favoriteVenueName}</span>
             </p>
           )}
           <p className="text-gray-300 text-sm">
@@ -130,7 +140,12 @@ export default function UserProfile() {
             </Button>
           )}
           <div>
-            <Button onClick={() => router.push('/')} className="w-full bg-gray-700 text-white hover:bg-gray-600">Back to Home</Button>
+            <Button
+              onClick={() => router.push('/')}
+              className="w-full bg-gray-700 text-white hover:bg-gray-600"
+            >
+              Back to Home
+            </Button>
           </div>
         </CardContent>
       </Card>

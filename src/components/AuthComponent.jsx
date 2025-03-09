@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
+import Link from 'next/link';
 
 export default function AuthComponent() {
   const { currentUser } = useAuth();
@@ -41,24 +42,32 @@ export default function AuthComponent() {
   }
 
   return (
-    <form onSubmit={handleLogin} className="flex flex-col space-y-2">
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        className="bg-white/10 border-white/20 text-white p-2 rounded"
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        className="bg-white/10 border-white/20 text-white p-2 rounded"
-      />
-      <Button type="submit" className="bg-white/20 text-white hover:bg-white/30">
-        Log In
-      </Button>
-    </form>
+    <div className="flex flex-col space-y-4">
+      <form onSubmit={handleLogin} className="flex flex-col space-y-2">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          className="bg-white/10 border-white/20 text-white p-2 rounded"
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="bg-white/10 border-white/20 text-white p-2 rounded"
+        />
+        <Button type="submit" className="bg-white/20 text-white hover:bg-white/30">
+          Log In
+        </Button>
+      </form>
+      <p className="text-gray-300 text-sm text-center">
+        Don’t have an account?{' '}
+        <Link href="/signup" className="text-white underline hover:text-gray-200">
+          Sign Up
+        </Link>
+      </p>
+    </div>
   );
 }
