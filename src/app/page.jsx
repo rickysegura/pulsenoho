@@ -9,9 +9,21 @@ import Heatmap from '../components/Heatmap';
 import Footer from '../components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { MapContext } from './ClientLayout';
+import './globals.css';
+import { useState } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
   const { isMapLoaded } = useContext(MapContext);
+  const [venueCount, setVenueCount] = useState(0);
+  const { currentUser } = useAuth()
+
+  const handleVenueCountChange = (count) => {
+    setVenueCount(count);
+  };
+
+  const forumLink = currentUser ? '/forum' : '/signup';
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -20,12 +32,9 @@ export default function Home() {
         <Heatmap isLoaded={isMapLoaded} />
         <div className="absolute top-0 left-0 w-full p-6">
           <div className="bg-black/10 backdrop-blur-sm inline-block px-4 py-2 rounded-lg">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">
-              NoHo Live 🚦
-            </h1>
-            <p className="text-lg md:text-xl text-gray-200 drop-shadow-md">
-              Vibe check venues in advance
-            </p>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md">NoHo Live 🚦</h1>
+            <p className="text-lg md:text-xl text-gray-200 drop-shadow-md">Vibe check venues in advance</p>
+            <Link href={forumLink} className="text-gray-300 hover:text-white text-sm underline mt-2 inline-block">{currentUser ? 'Join the Forum' : 'Sign Up to Join the Forum'}</Link>
           </div>
         </div>
       </div>
@@ -35,10 +44,10 @@ export default function Home() {
         <main className="flex-1">
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white">Venues</CardTitle>
+              <CardTitle className="text-xl font-semibold text-white">Venues ({venueCount})</CardTitle>
             </CardHeader>
             <CardContent>
-              <VenueList />
+              <VenueList onVenueCountChange={handleVenueCountChange} />
             </CardContent>
           </Card>
         </main>
@@ -57,6 +66,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <AuthComponent />
+              <Link href="/forum" className="text-gray-300 hover:text-white text-sm underline block mt-6">Chat in the Forum</Link>
             </CardContent>
           </Card>
         </aside>

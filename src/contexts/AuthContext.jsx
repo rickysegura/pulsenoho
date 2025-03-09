@@ -2,41 +2,30 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, db } from '../lib/firebase'; // Ensure db is imported
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase'; // Adjust path as needed
+import { onAuthStateChanged } from 'firebase/auth';
 
 const AuthContext = createContext();
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // Check if user document exists, create it if not
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          console.log('Creating user document for:', user.uid);
-          await setDoc(userRef, { points: 0 });
-        }
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);
     });
     return unsubscribe;
   }, []);
 
-  const value = { currentUser };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ currentUser, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
 }

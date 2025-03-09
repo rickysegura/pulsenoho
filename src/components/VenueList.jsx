@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import StatusUpdateForm from './StatusUpdateForm';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,17 +32,28 @@ function VenueItem({ venue }) {
     }, (error) => console.error('Recent feedback error:', error));
 
     const qAll = query(feedbacksRef);
-    const unsubscribeAll = onSnapshot(qAll, (snapshot) => {
+    const unsubscribeAll = onSnapshot(qAll, async (snapshot) => {
       const allRatings = snapshot.docs.map(doc => doc.data().rating);
-      const allComments = snapshot.docs.map(doc => ({
-        userId: doc.data().userId,
-        comment: doc.data().comment || 'No comment',
-        timestamp: doc.data().timestamp && doc.data().timestamp.toDate ? doc.data().timestamp.toDate().toLocaleTimeString() : 'N/A',
-      }));
+      const feedbackData = snapshot.docs.map(doc => doc.data());
+
+      // Fetch usernames for each comment
+      const commentsWithUsernames = await Promise.all(
+        feedbackData.map(async (feedback) => {
+          const userRef = doc(db, 'users', feedback.userId);
+          const userSnap = await getDoc(userRef);
+          const username = userSnap.exists() ? userSnap.data().username || feedback.userId.slice(0, 6) : feedback.userId.slice(0, 6);
+          return {
+            username,
+            comment: feedback.comment || 'No comment',
+            timestamp: feedback.timestamp && feedback.timestamp.toDate ? feedback.timestamp.toDate().toLocaleTimeString() : 'N/A',
+          };
+        })
+      );
+
       if (allRatings.length > 0) {
         setHistoricalScore((allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(1));
       }
-      setComments(allComments);
+      setComments(commentsWithUsernames);
     }, (error) => console.error('Historical feedback error:', error));
 
     return () => {
@@ -77,7 +88,7 @@ function VenueItem({ venue }) {
           <ul className="space-y-2 mt-2">
             {comments.map((c, index) => (
               <li key={index} className="text-gray-400 text-sm">
-                <span className="text-gray-300">User {c.userId.slice(0, 6)}...</span> at {c.timestamp}: {c.comment}
+                <span className="text-gray-300">{c.username}</span> at {c.timestamp}: {c.comment}
               </li>
             ))}
           </ul>
@@ -89,16 +100,19 @@ function VenueItem({ venue }) {
   );
 }
 
-export default function VenueList() {
+export default function VenueList({ onVenueCountChange }) {
   const [venues, setVenues] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'venues'), (snapshot) => {
       const venueData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setVenues(venueData);
+      if (onVenueCountChange) {
+        onVenueCountChange(venueData.length);
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [onVenueCountChange]);
 
   return (
     <Card className="bg-transparent border-none">
