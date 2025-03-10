@@ -1,4 +1,4 @@
-// src/components/UserProfile.js
+// src/components/UserProfile.js - Fixed points update
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,80 +12,127 @@ import Image from 'next/image';
 
 export default function UserProfile() {
   const { currentUser } = useAuth();
-  const [points, setPoints] = useState(0);
-  const [username, setUsername] = useState('');
-  const [photoURL, setPhotoURL] = useState('');
-  const [bio, setBio] = useState('');
-  const [favoriteVenueId, setFavoriteVenueId] = useState('');
-  const [favoriteVenueName, setFavoriteVenueName] = useState('');
-  const [followers, setFollowers] = useState([]); // Add followers state
-  const [following, setFollowing] = useState([]); // Add following state
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userData, setUserData] = useState({
+    points: 0,
+    username: '',
+    photoURL: '',
+    bio: '',
+    favoriteVenueId: '',
+    favoriteVenueName: '',
+    followers: [],
+    following: [],
+    isAdmin: false
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) {
-      setPoints(0);
-      setUsername('');
-      setPhotoURL('');
-      setBio('');
-      setFavoriteVenueId('');
-      setFavoriteVenueName('');
-      setFollowers([]);
-      setFollowing([]);
+      setUserData({
+        points: 0,
+        username: '',
+        photoURL: '',
+        bio: '',
+        favoriteVenueId: '',
+        favoriteVenueName: '',
+        followers: [],
+        following: [],
+        isAdmin: false
+      });
+      setLoading(false);
       return;
     }
 
+    console.log("Setting up user listener for:", currentUser.uid);
+    
     const userRef = doc(db, 'users', currentUser.uid);
-    const unsubscribe = onSnapshot(userRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setPoints(data.points || 0);
-        setUsername(data.username || currentUser.email);
-        setPhotoURL(data.photoURL || '');
-        setBio(data.bio || '');
-        setFavoriteVenueId(data.favoriteVenueId || '');
-        setFollowers(data.followers || []); // Set followers
-        setFollowing(data.following || []); // Set following
-        setIsAdmin(data.isAdmin);
+    const unsubscribe = onSnapshot(
+      userRef, 
+      async (docSnap) => {
+        console.log("User data updated:", docSnap.exists());
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log("User points from DB:", data.points);
+          
+          // Start with data from document
+          const newUserData = {
+            points: data.points || 0,
+            username: data.username || currentUser.email?.split('@')[0] || 'User',
+            photoURL: data.photoURL || '',
+            bio: data.bio || '',
+            favoriteVenueId: data.favoriteVenueId || '',
+            followers: data.followers || [],
+            following: data.following || [],
+            isAdmin: !!data.isAdmin,
+            favoriteVenueName: ''
+          };
 
-        // Fetch favorite venue name
-        if (data.favoriteVenueId) {
-          const venueRef = doc(db, 'venues', data.favoriteVenueId);
-          const venueSnap = await getDoc(venueRef);
-          setFavoriteVenueName(venueSnap.exists() ? venueSnap.data().name : 'Unknown Venue');
+          // Fetch favorite venue name if ID exists
+          if (data.favoriteVenueId) {
+            try {
+              const venueRef = doc(db, 'venues', data.favoriteVenueId);
+              const venueSnap = await getDoc(venueRef);
+              if (venueSnap.exists()) {
+                newUserData.favoriteVenueName = venueSnap.data().name || 'Unknown Venue';
+              }
+            } catch (error) {
+              console.error("Error fetching venue:", error);
+            }
+          }
+          
+          setUserData(newUserData);
         } else {
-          setFavoriteVenueName('');
+          console.log("User document doesn't exist");
+          // Reset to defaults if document doesn't exist
+          setUserData({
+            points: 0,
+            username: currentUser.email?.split('@')[0] || 'User',
+            photoURL: '',
+            bio: '',
+            favoriteVenueId: '',
+            favoriteVenueName: '',
+            followers: [],
+            following: [],
+            isAdmin: false
+          });
         }
-      } else {
-        setPoints(0);
-        setUsername(currentUser.email);
-        setPhotoURL('');
-        setBio('');
-        setFavoriteVenueId('');
-        setFavoriteVenueName('');
-        setFollowers([]);
-        setFollowing([]);
+        
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in UserProfile snapshot:', error);
+        setLoading(false);
       }
-    }, (error) => {
-      console.error('Snapshot error in UserProfile:', error.message);
-      if (error.code === 'permission-denied') {
-        setPoints(0);
-        setUsername(currentUser.email);
-        setPhotoURL('');
-        setBio('');
-        setFavoriteVenueId('');
-        setFavoriteVenueName('');
-        setFollowers([]);
-        setFollowing([]);
-      }
-    });
+    );
 
-    return () => unsubscribe();
+    return () => {
+      console.log("Unsubscribing from user listener");
+      unsubscribe();
+    };
   }, [currentUser]);
+
+  if (loading) {
+    return (
+      <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-white">
+            Loading Profile...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-20 bg-white/5 animate-pulse rounded-lg"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!currentUser) {
     return (
-      <p className="text-gray-400 text-center">Please log in to view your profile.</p>
+      <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+        <CardContent className="p-6">
+          <p className="text-gray-400 text-center">Please log in to view your profile</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -93,15 +140,15 @@ export default function UserProfile() {
     <Card className="bg-white/10 backdrop-blur-lg border-white/20">
       <CardHeader>
         <CardTitle className="text-xl font-semibold text-white">
-          Welcome, {username}
+          Welcome, {userData.username}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {photoURL && (
+        {userData.photoURL && (
           <div className="flex justify-center">
             <Image
-              src={photoURL}
-              alt={`${username}'s avatar`}
+              src={userData.photoURL}
+              alt={`${userData.username}'s avatar`}
               width={80}
               height={80}
               className="rounded-full border-2 border-white/20"
@@ -111,34 +158,34 @@ export default function UserProfile() {
         <div className="flex items-center space-x-2">
           <span className="text-gray-300">Points:</span>
           <Badge variant="secondary" className="bg-white/20 text-white">
-            {points}
+            {userData.points}
           </Badge>
         </div>
-        {bio && (
-          <p className="text-gray-300 text-sm italic">"{bio}"</p>
+        {userData.bio && (
+          <p className="text-gray-300 text-sm italic">"{userData.bio}"</p>
         )}
-        {favoriteVenueName && (
+        {userData.favoriteVenueName && (
           <p className="text-gray-300 text-sm">
-            Favorite Spot: <span className="text-white">{favoriteVenueName}</span>
+            Favorite Spot: <span className="text-white">{userData.favoriteVenueName}</span>
           </p>
         )}
         <p className="text-gray-300 text-sm">
-          Followers: <span className="text-white">{followers.length}</span> | Following:{' '}
-          <span className="text-white">{following.length}</span>
+          Followers: <span className="text-white">{userData.followers.length}</span> | Following:{' '}
+          <span className="text-white">{userData.following.length}</span>
         </p>
-        {isAdmin && (
+        {userData.isAdmin && (
           <Link href="/admin" className="text-gray-300 hover:text-white text-sm underline">
             Admin Dashboard
           </Link>
         )}
-        <br />
-        <Link href={`/profile/${currentUser.uid}`} className="text-gray-300 hover:text-white text-sm underline">
-          View My Profile
-        </Link>
-        <br />
-        <Link href="/settings" className="text-gray-300 hover:text-white text-sm underline">
-          Edit Profile
-        </Link>
+        <div className="pt-2 flex flex-col gap-2">
+          <Link href={`/profile/${currentUser.uid}`} className="text-gray-300 hover:text-white text-sm underline">
+            View My Profile
+          </Link>
+          <Link href="/settings" className="text-gray-300 hover:text-white text-sm underline">
+            Edit Profile
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

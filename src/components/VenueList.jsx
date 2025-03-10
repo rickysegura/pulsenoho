@@ -1,159 +1,242 @@
-// src/components/VenueList.js
+// src/components/VenueList.js - With fixed components integrated
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, addDoc, serverTimestamp, setDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import StatusUpdateForm from './StatusUpdateForm';
 import { useAuth } from '../contexts/AuthContext';
+import StatusUpdateForm from './StatusUpdateForm';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, MapPin, Users } from 'lucide-react';
+import Link from 'next/link';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
 import '../app/globals.css';
 
+// Import VenueItem from fixed-venue-item.js
 function VenueItem({ venue }) {
-  const [busynessScore, setBusynessScore] = useState('Calculating...');
-  const [feedbackCount, setFeedbackCount] = useState(0);
-  const [historicalScore, setHistoricalScore] = useState(null);
-  const [comments, setComments] = useState([]);
-  const [showComments, setShowComments] = useState(false);
+  const [showVibes, setShowVibes] = useState(false);
+  const [vibes, setVibes] = useState([]);
+  const [busynessScore, setBusynessScore] = useState('Loading...');
+  const [vibeCount, setVibeCount] = useState(0);
   const { currentUser } = useAuth();
+  const [lastVibe, setLastVibe] = useState(null);
+
+  // Handle submitting a new vibe
+  const handleVibeSubmit = async (rating, comment) => {
+    if (!venue?.id || !currentUser) return false;
+    
+    try {
+      // Add feedback document
+      const feedbackData = {
+        userId: currentUser.uid,
+        rating: Number(rating),
+        comment: comment || '',
+        timestamp: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, `venues/${venue.id}/feedbacks`), feedbackData);
+      
+      // Update user points
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        points: increment(1)
+      }, { merge: true });
+      
+      // Force refresh vibes list by showing it if hidden
+      if (!showVibes) {
+        setShowVibes(true);
+      }
+      
+      // Set last vibe data to immediately show in the list
+      setLastVibe({
+        id: docRef.id,
+        ...feedbackData,
+        userId: currentUser.uid,
+        username: currentUser.email?.split('@')[0] || 'You',
+        time: new Date().toLocaleTimeString(),
+        justAdded: true
+      });
+      
+      toast.success('Vibe posted! +1 point');
+      return true;
+    } catch (error) {
+      console.error('Error submitting vibe:', error);
+      toast.error(`Failed to post vibe: ${error.message}`);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    if (!currentUser) {
-      setBusynessScore('Log in to see vibes');
-      setFeedbackCount(0);
-      setHistoricalScore(null);
-      setComments([]);
-      return;
-    }
+    if (!venue?.id || !currentUser) return;
 
+    // Listen for venue feedback
     const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
-    const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
-    const qRecent = query(feedbacksRef, where('timestamp', '>', oneHourAgo));
-
-    const unsubscribeRecent = onSnapshot(
-      qRecent,
-      (snapshot) => {
-        const ratings = snapshot.docs.map((doc) => doc.data().rating);
-        setFeedbackCount(ratings.length);
-        if (ratings.length > 0) {
-          const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-          setBusynessScore(avg.toFixed(1));
-        } else {
-          setBusynessScore('No recent data');
-        }
-      },
-      (error) => console.error('Recent feedback error:', error)
-    );
-
-    const qAll = query(feedbacksRef);
-    const unsubscribeAll = onSnapshot(
-      qAll,
+    const unsubscribe = onSnapshot(
+      feedbacksRef,
       async (snapshot) => {
-        const allRatings = snapshot.docs.map((doc) => doc.data().rating);
-        const feedbackData = snapshot.docs.map((doc) => doc.data());
-
-        const commentsWithUsernames = await Promise.all(
-          feedbackData.map(async (feedback) => {
-            const userRef = doc(db, 'users', feedback.userId);
-            const userSnap = await getDoc(userRef);
-            const userData = userSnap.exists() ? userSnap.data() : {};
-            return {
-              username: userData.username || feedback.userId.slice(0, 6),
-              photoURL: userData.photoURL || '',
-              comment: feedback.comment || 'No comment',
-              timestamp: feedback.timestamp && feedback.timestamp.toDate()
-                ? feedback.timestamp.toDate().toLocaleTimeString()
-                : 'N/A',
-            };
-          })
-        );
-
-        if (allRatings.length > 0) {
-          setHistoricalScore((allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(1));
+        try {
+          // Get basic feedback data
+          const feedbackData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setVibeCount(feedbackData.length);
+          
+          // Calculate average score
+          if (feedbackData.length > 0) {
+            const ratings = feedbackData.map(item => item.rating || 0);
+            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+            setBusynessScore(avg.toFixed(1));
+          } else {
+            setBusynessScore('No data');
+          }
+          
+          // Only load user data if vibes are being shown
+          if (showVibes || lastVibe) {
+            // Fetch user info for each feedback
+            const vibesWithUserInfo = await Promise.all(
+              feedbackData
+                .sort((a, b) => {
+                  if (!a.timestamp || !b.timestamp) return 0;
+                  return b.timestamp.seconds - a.timestamp.seconds;
+                })
+                .slice(0, 5) // Show only latest 5 vibes
+                .map(async (feedback) => {
+                  try {
+                    if (!feedback.userId) return { ...feedback, username: 'Anonymous' };
+                    
+                    // If this is the current user and we just added this vibe,
+                    // use the cached data instead of fetching again
+                    if (lastVibe && feedback.userId === currentUser.uid && 
+                        feedback.comment === lastVibe.comment &&
+                        feedback.rating === lastVibe.rating) {
+                      return lastVibe;
+                    }
+                    
+                    const userRef = doc(db, 'users', feedback.userId);
+                    const userSnap = await getDoc(userRef);
+                    const userData = userSnap.exists() ? userSnap.data() : {};
+                    
+                    return {
+                      ...feedback,
+                      username: userData.username || feedback.userId.slice(0, 6),
+                      photoURL: userData.photoURL || '',
+                      time: feedback.timestamp?.toDate ? 
+                        feedback.timestamp.toDate().toLocaleTimeString() : 'Unknown'
+                    };
+                  } catch (err) {
+                    console.error("Error fetching user data:", err);
+                    return { ...feedback, username: 'User', time: 'Unknown' };
+                  }
+                })
+            );
+            
+            setVibes(vibesWithUserInfo);
+            
+            // Clear last vibe flag once it's in the list
+            if (lastVibe) {
+              setLastVibe(null);
+            }
+          }
+        } catch (error) {
+          console.error("Error processing venue vibes:", error);
+          setBusynessScore('Error');
         }
-        setComments(commentsWithUsernames);
-      },
-      (error) => console.error('Historical feedback error:', error)
+      }
     );
 
-    return () => {
-      unsubscribeRecent();
-      unsubscribeAll();
-    };
-  }, [venue.id, currentUser]); // Add currentUser to dependencies
+    return () => unsubscribe();
+  }, [venue?.id, currentUser, showVibes, lastVibe]);
 
-  const getBusynessColor = (score) => {
-    if (score === 'No recent data' || score === 'Log in to see vibes') return 'bg-gray-600';
+  const getVibeColor = (score) => {
+    if (score === 'No data' || score === 'Loading...' || score === 'Error') 
+      return 'bg-gray-600';
+      
     const numScore = parseFloat(score);
-    if (numScore <= 2) return 'bg-green-600'; // Chill
+    if (numScore <= 2) return 'bg-green-600'; // Quiet
     if (numScore <= 4) return 'bg-yellow-600'; // Moderate
-    return 'bg-red-600'; // Packed
+    return 'bg-red-600'; // Busy
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10 mb-4 transition-all hover:bg-white/10">
+    <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10 mb-4">
       <div className="flex justify-between items-start">
         <div>
           <h3 className="text-lg font-medium text-white">
             {venue.name} <span className="text-gray-400 text-sm">({venue.type})</span>
           </h3>
           <p className="text-gray-300 mt-1">
-            Now:{' '}
+            Busyness:{' '}
             <Badge
               variant="outline"
-              className={`text-white border-white/20 ${getBusynessColor(busynessScore)}`}
+              className={`text-white border-white/20 ${getVibeColor(busynessScore)}`}
             >
               {busynessScore}
             </Badge>{' '}
-            <span className="text-sm">({feedbackCount} recent vibe{feedbackCount !== 1 ? 's' : ''})</span>
-          </p>
-          <p className="text-gray-400 text-sm mt-1">
-            All-Time Avg: <span className="text-white">{historicalScore || 'N/A'}</span>
+            <span className="text-sm">({vibeCount} vibes)</span>
           </p>
         </div>
-        {currentUser && <StatusUpdateForm venueId={venue.id} />}
+        <StatusUpdateForm 
+          venueId={venue.id} 
+          onSubmit={handleVibeSubmit}
+        />
       </div>
-      <div className="mt-4">
+      
+      {/* Vibes dropdown */}
+      <div className="mt-3">
         <Button
           variant="ghost"
+          size="sm"
           className="text-gray-300 hover:text-white text-sm p-0 flex items-center gap-1"
-          onClick={() => setShowComments(!showComments)}
+          onClick={() => setShowVibes(!showVibes)}
         >
-          <span>Vibe Checks ({comments.length})</span>
-          {showComments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <span>Recent Vibes {vibeCount > 0 ? `(${Math.min(vibeCount, 5)})` : ''}</span>
+          {showVibes ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
-        {showComments && (
-          <div className="mt-2 space-y-3">
-            {comments.length > 0 ? (
-              comments.map((c, index) => (
+        
+        {showVibes && (
+          <div className="mt-2 space-y-2 max-h-60 overflow-y-auto p-1 vibe-checks">
+            {vibes.length > 0 ? (
+              vibes.map((vibe) => (
                 <div
-                  key={index}
-                  className="flex items-start gap-2 p-2 bg-gray-800/50 rounded-lg border border-white/10"
+                  key={vibe.id}
+                  className={`flex items-start gap-2 p-2 rounded-lg border ${
+                    vibe.justAdded 
+                      ? 'bg-green-900/30 border-green-500/30 animate-pulse' 
+                      : 'bg-gray-800/50 border-white/10'
+                  }`}
                 >
-                  {c.photoURL && (
+                  {vibe.photoURL && (
                     <Image
-                      src={c.photoURL}
-                      alt={`${c.username}'s avatar`}
+                      src={vibe.photoURL}
+                      alt={`${vibe.username}'s avatar`}
                       width={24}
                       height={24}
                       className="rounded-full border border-white/20"
                     />
                   )}
                   <div className="flex-1">
-                    <p className="text-gray-300 text-sm">
-                      <span className="font-semibold text-white">{c.username}</span>{' '}
-                      <span className="text-gray-400">at {c.timestamp}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-white text-xs">{vibe.username}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`${getVibeColor(vibe.rating.toString())} text-white text-xs`}>
+                          {vibe.rating}/5
+                        </Badge>
+                        <span className="text-gray-400 text-xs">{vibe.time}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-300 break-words">
+                      {vibe.comment || <em className="text-gray-500 text-xs">No comment</em>}
                     </p>
-                    <p className="text-white text-sm break-words">{c.comment}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-gray-400 text-sm">No vibe checks yet.</p>
+              <p className="text-gray-400 text-sm text-center py-2">No vibes reported yet</p>
             )}
           </div>
         )}
@@ -162,39 +245,193 @@ function VenueItem({ venue }) {
   );
 }
 
+// Login CTA component for logged-out users
+function LoginCTA() {
+  return (
+    <div className="rounded-lg overflow-hidden">
+      <div className="relative h-48 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div className="relative z-10 text-center p-6">
+          <h3 className="text-2xl font-bold text-white mb-3">Check The Vibe</h3>
+          <p className="text-white/80 mb-4">
+            Sign in to see real-time busyness levels and share your own venue vibes
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/login">
+              <Button className="bg-white text-indigo-700 hover:bg-white/90">
+                Log In
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button className="bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30">
+                Sign Up
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gray-800/50 backdrop-blur-sm p-5">
+        <h4 className="text-white font-medium mb-3">NoHo Live Features:</h4>
+        <ul className="space-y-2">
+          <li className="flex items-center text-gray-300">
+            <MapPin className="h-4 w-4 mr-2 text-green-400" />
+            <span>See which spots are busy right now</span>
+          </li>
+          <li className="flex items-center text-gray-300">
+            <Users className="h-4 w-4 mr-2 text-blue-400" />
+            <span>Get venue recommendations from the community</span>
+          </li>
+          <li className="flex items-center text-gray-300">
+            <Lock className="h-4 w-4 mr-2 text-purple-400" />
+            <span>Earn points and build your profile</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Preview card showing limited venue info
+function VenuePreviewCard({ venue, index }) {
+  return (
+    <div 
+      className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10 mb-4 transition-all hover:bg-white/10"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-medium text-white">
+            {venue.name} <span className="text-gray-400 text-sm">({venue.type})</span>
+          </h3>
+          <p className="text-gray-300 mt-1">
+            <Badge variant="outline" className="bg-gray-600 text-white border-white/20">
+              Sign in to see vibe
+            </Badge>
+          </p>
+        </div>
+        <Button
+          className="bg-white/20 text-white hover:bg-white/30 opacity-50 cursor-not-allowed"
+          disabled={true}
+        >
+          <Lock className="h-3.5 w-3.5 mr-1" />
+          Add Vibe
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Main VenueList component
 export default function VenueList({ onVenueCountChange }) {
-  const { currentUser } = useAuth();
   const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
+
+  // Mock data for logged-out users to avoid permissions errors
+  const mockVenues = [
+    { id: 'mock1', name: 'Republic of Pie', type: 'Coffee Shop' },
+    { id: 'mock2', name: 'Federal Bar', type: 'Bar & Restaurant' },
+    { id: 'mock3', name: 'Idle Hour', type: 'Bar' },
+  ];
 
   useEffect(() => {
-    if (!currentUser) {
-      setVenues([]);
-      if (onVenueCountChange) onVenueCountChange(0);
-      return;
-    }
+    let isMounted = true;
+    
+    const fetchVenues = async () => {
+      try {
+        // For logged-out users, use mock data
+        if (!currentUser) {
+          if (isMounted) {
+            setVenues(mockVenues);
+            setLoading(false);
+            if (typeof onVenueCountChange === 'function') {
+              onVenueCountChange(mockVenues.length);
+            }
+          }
+          return;
+        }
+        
+        // For logged-in users, fetch real data
+        const venuesRef = collection(db, 'venues');
+        const snapshot = await getDocs(venuesRef);
+        
+        if (isMounted) {
+          const venueData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setVenues(venueData);
+          setLoading(false);
+          
+          if (typeof onVenueCountChange === 'function') {
+            onVenueCountChange(venueData.length);
+          }
+        }
+      } catch (error) {
+        console.error('Venue list error:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchVenues();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, onVenueCountChange]);
 
-    const unsubscribe = onSnapshot(
-      collection(db, 'venues'),
-      (snapshot) => {
-        const venueData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setVenues(venueData);
-        if (onVenueCountChange) onVenueCountChange(venueData.length);
-      },
-      (error) => console.error('Venue list error:', error)
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white/5 rounded-lg h-24 animate-pulse"></div>
+        ))}
+      </div>
     );
+  }
 
-    return () => unsubscribe();
-  }, [currentUser, onVenueCountChange]); // Add currentUser to dependencies
+  if (!currentUser) {
+    // Logged-out experience with mock data
+    return (
+      <Card className="bg-transparent border-none">
+        <CardContent className="p-0 space-y-6">
+          <LoginCTA />
+          
+          <div className="space-y-1">
+            <h3 className="text-lg font-medium text-white/80">Venue Previews</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Here's a sample of venues in North Hollywood
+            </p>
+          </div>
+          
+          {mockVenues.map((venue, index) => (
+            <VenuePreviewCard key={venue.id} venue={venue} index={index} />
+          ))}
+          
+          <div className="text-center py-2 border-t border-white/10">
+            <p className="text-sm text-gray-400">
+              More venues available after login
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
+  // Regular logged-in experience with VenueItem
   return (
     <Card className="bg-transparent border-none">
       <CardContent className="p-0 space-y-4">
         {venues.length === 0 ? (
-          <p className="text-gray-400">
-            {currentUser ? 'No venues yet—check back soon!' : 'Log in to see venues.'}
-          </p>
+          <p className="text-gray-400">No venues found. Check back soon!</p>
         ) : (
-          venues.map((venue) => <VenueItem key={venue.id} venue={venue} />)
+          venues.map((venue) => (
+            <VenueItem key={venue.id} venue={venue} />
+          ))
         )}
       </CardContent>
     </Card>

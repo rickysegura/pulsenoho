@@ -18,6 +18,7 @@ export default function Forum() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -29,9 +30,9 @@ export default function Forum() {
     const q = query(collection(db, 'forum'), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const messageData = await Promise.all(
-        snapshot.docs.map(async (messageDoc) => { // Renamed 'doc' to 'messageDoc'
+        snapshot.docs.map(async (messageDoc) => {
           const data = messageDoc.data();
-          const userRef = doc(db, 'users', data.userId); // Now uses imported 'doc'
+          const userRef = doc(db, 'users', data.userId);
           const userSnap = await getDoc(userRef);
           const userData = userSnap.exists() ? userSnap.data() : {};
           return {
@@ -47,7 +48,7 @@ export default function Forum() {
       setMessages(messageData);
       setLoading(false);
     }, (error) => {
-      console.error('Error fetching forum messages:', error);
+      console.error('Error fetching forum messages:', error.message);
       setLoading(false);
     });
 
@@ -58,16 +59,29 @@ export default function Forum() {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
+    setError('');
     try {
-      await addDoc(collection(db, 'forum'), {
+      let username = currentUser.displayName || 'Anonymous';
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userDocRef);
+      if (userSnap.exists()) {
+        username = userSnap.data().username || username;
+      }
+
+      const messageData = {
         userId: currentUser.uid,
-        username: currentUser.displayName || (await getDoc(doc(db, 'users', currentUser.uid))).data().username || 'Anonymous',
+        username: username,
         text: newMessage.trim(),
         timestamp: serverTimestamp(),
-      });
+      };
+
+      console.log('Current user:', currentUser);
+      console.log('Sending message:', messageData);
+      await addDoc(collection(db, 'forum'), messageData);
       setNewMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error sending message:', error.message);
+      setError(error.message);
     }
   };
 
@@ -119,14 +133,17 @@ export default function Forum() {
             onSubmit={handleSendMessage}
             className="sticky bottom-0 bg-gradient-to-t from-gray-900/80 to-transparent p-4 border-t border-white/20"
           >
-            <div className="flex gap-2">
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="bg-white/10 border-white/20 text-white flex-1 focus:ring-2 focus:ring-white/30"
-              />
-              <Button type="submit" className="bg-white/20 text-white hover:bg-white/30">Send</Button>
+            <div className="flex flex-col gap-2">
+              {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type your message..."
+                  className="bg-white/10 border-white/20 text-white flex-1 focus:ring-2 focus:ring-white/30"
+                />
+                <Button type="submit" className="bg-white/20 text-white hover:bg-white/30">Send</Button>
+              </div>
             </div>
           </form>
           <div className="p-4">

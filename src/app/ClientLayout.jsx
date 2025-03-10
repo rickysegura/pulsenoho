@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { LoadScript } from '@react-google-maps/api';
 import { createContext } from 'react';
 import { AuthProvider } from '../contexts/AuthContext';
+import ToastProvider from '../components/ToastProvider';
 import './globals.css';
 
 export const MapContext = createContext({ isMapLoaded: false });
@@ -25,6 +26,7 @@ export default function ClientLayout({ children }) {
     >
       <AuthProvider>
         <MapContext.Provider value={{ isMapLoaded }}>
+          <ToastProvider />
           {children}
         </MapContext.Provider>
       </AuthProvider>

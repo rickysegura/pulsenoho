@@ -1,7 +1,6 @@
 // src/app/layout.js
 import ClientLayout from './ClientLayout';
 import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata = {
   title: "North Hollywood Live",
@@ -15,9 +14,7 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       </head>
       <body>
-        <AuthProvider>
-          <ClientLayout>{children}</ClientLayout>
-        </AuthProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

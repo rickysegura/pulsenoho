@@ -1,9 +1,9 @@
-// src/components/Heatmap.js
+// src/components/Heatmap.js - Simplified
 'use client';
 
 import { useState, useEffect } from 'react';
 import { GoogleMap, HeatmapLayer, Marker } from '@react-google-maps/api';
-import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -31,85 +31,52 @@ const mapStyles = [
 
 export default function Heatmap({ isLoaded }) {
   const { currentUser } = useAuth();
-  const [heatmapData, setHeatmapData] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoaded || !currentUser) {
-      setHeatmapData([]);
+      setVenues([]);
+      setLoading(false);
       return;
     }
 
-    let venueData = [];
-    const feedbackUnsubscribers = []; // Store feedback listener unsubscribers
-
-    const unsubscribeVenues = onSnapshot(
-      collection(db, 'venues'),
-      (snapshot) => {
-        venueData = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name || 'Unnamed Venue',
-            lat: data.lat,
-            lng: data.lng,
-            feedbackCount: 0,
-          };
-        });
-
-        // Clear previous feedback listeners
-        feedbackUnsubscribers.forEach((unsub) => unsub());
-        feedbackUnsubscribers.length = 0;
-
-        // Set initial heatmap data
-        setHeatmapData(
-          venueData.map((v) => ({
-            location: new google.maps.LatLng(v.lat, v.lng),
-            weight: 1,
-            name: v.name,
-          }))
-        );
-
-        // Update feedback counts
-        venueData.forEach((venue) => {
-          const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
-          const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
-          const q = query(feedbacksRef, where('timestamp', '>', oneHourAgo));
-
-          const unsubscribeFeedback = onSnapshot(
-            q,
-            (feedbackSnapshot) => {
-              const feedbackCount = feedbackSnapshot.docs.length;
-              venue.feedbackCount = feedbackCount;
-              setHeatmapData(
-                venueData.map((v) => ({
-                  location: new google.maps.LatLng(v.lat, v.lng),
-                  weight: v.feedbackCount > 0 ? v.feedbackCount * 5 : 1,
-                  name: v.name,
-                }))
-              );
-            },
-            (error) => {
-              console.error(`Error fetching feedbacks for ${venue.id}:`, error);
-            }
-          );
-
-          feedbackUnsubscribers.push(unsubscribeFeedback);
-        });
-      },
-      (error) => {
+    // Simple one-time fetch of venues without feedback
+    const fetchVenues = async () => {
+      try {
+        const venuesRef = collection(db, 'venues');
+        const snapshot = await getDocs(venuesRef);
+        
+        const venueData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          weight: 1 // Default weight for all venues
+        }));
+        
+        setVenues(venueData);
+        setLoading(false);
+      } catch (error) {
         console.error('Error fetching venues:', error);
+        setLoading(false);
       }
-    );
-
-    return () => {
-      unsubscribeVenues();
-      feedbackUnsubscribers.forEach((unsub) => unsub());
     };
-  }, [isLoaded, currentUser]); // Add currentUser to dependencies
+
+    fetchVenues();
+  }, [isLoaded, currentUser]);
 
   if (!isLoaded) {
-    return <p className="text-gray-400 text-center">Loading vibe heatmap...</p>;
+    return <p className="text-gray-400 text-center">Loading map...</p>;
   }
+
+  if (loading) {
+    return <p className="text-gray-400 text-center">Loading venues...</p>;
+  }
+
+  // Create heatmap data points from venues
+  const heatmapData = venues.map(venue => ({
+    location: new google.maps.LatLng(venue.lat, venue.lng),
+    weight: venue.weight || 1
+  }));
 
   return (
     <div className="relative bg-white/10 backdrop-blur-lg rounded-lg">
@@ -138,12 +105,12 @@ export default function Heatmap({ isLoaded }) {
             ],
           }}
         />
-        {heatmapData.map((point, index) => (
+        {venues.map((venue) => (
           <Marker
-            key={index}
-            position={{ lat: point.location.lat(), lng: point.location.lng() }}
+            key={venue.id}
+            position={{ lat: venue.lat, lng: venue.lng }}
             label={{
-              text: point.name || 'Unknown',
+              text: venue.name || 'Unnamed Venue',
               color: '#ffffff',
               fontSize: '14px',
               fontWeight: 'bold',

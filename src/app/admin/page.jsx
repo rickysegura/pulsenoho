@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -12,10 +12,11 @@ import { Button } from '../../components/ui/button';
 import { Trash2 } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { currentUser, isAdmin } = useAuth();
+  const { currentUser } = useAuth();
   const [venues, setVenues] = useState([]);
   const [newVenue, setNewVenue] = useState({ name: '', type: '', lat: '', lng: '' });
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,13 +24,22 @@ export default function AdminDashboard() {
       router.push('/signup');
       return;
     }
-    if (!isAdmin) {
-      router.push('/');
-      return;
-    }
+
+    // Fetch isAdmin status
+    const checkAdminStatus = async () => {
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && userSnap.data().isAdmin === true) {
+        setIsAdmin(true);
+      } else {
+        router.push('/');
+        return;
+      }
+    };
+    checkAdminStatus();
 
     const unsubscribe = onSnapshot(collection(db, 'venues'), (snapshot) => {
-      const venueData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const venueData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setVenues(venueData);
       setLoading(false);
     }, (error) => {
@@ -38,7 +48,7 @@ export default function AdminDashboard() {
     });
 
     return () => unsubscribe();
-  }, [currentUser, isAdmin, router]);
+  }, [currentUser, router]);
 
   const handleAddVenue = async (e) => {
     e.preventDefault();
@@ -70,7 +80,7 @@ export default function AdminDashboard() {
   }
 
   if (!currentUser || !isAdmin) {
-    return null;
+    return null; // Redirect handled in useEffect
   }
 
   return (

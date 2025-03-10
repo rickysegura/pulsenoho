@@ -1,81 +1,54 @@
-// src/components/StatusUpdateForm.js
+// src/components/StatusUpdateForm.js - With callback support
 'use client';
 
 import { useState } from 'react';
-import { collection, query, where, getDocs, setDoc, addDoc, doc, updateDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { toast } from 'react-hot-toast';
 
-export default function StatusUpdateForm({ venueId }) {
-  const [rating, setRating] = useState(null);
+export default function StatusUpdateForm({ venueId, onSubmit }) {
+  const [rating, setRating] = useState(3);
   const [comment, setComment] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const currentUser = auth.currentUser;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { currentUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!rating || !currentUser || !venueId) {
-      console.log('Missing data:', { rating, currentUser, venueId });
+      toast.error('Missing required information');
       return;
     }
 
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
     try {
-      console.log('Submitting feedback for venue:', venueId, 'by user:', currentUser.uid);
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const feedbacksRef = collection(db, `venues/${venueId}/feedbacks`);
-      const q = query(
-        feedbacksRef,
-        where('userId', '==', currentUser.uid),
-        where('timestamp', '>', oneHourAgo)
-      );
-      const querySnapshot = await getDocs(q);
-      console.log('Existing feedbacks in last hour:', querySnapshot.docs.length);
-
-      const feedbackData = {
-        userId: currentUser.uid,
-        rating: Number(rating),
-        comment: comment.trim(),
-        timestamp: serverTimestamp(),
-      };
-
-      if (!querySnapshot.empty) {
-        const existingDoc = querySnapshot.docs[0];
-        await setDoc(existingDoc.ref, feedbackData, { merge: true });
-        console.log('Updated existing feedback successfully');
+      // If parent provided an onSubmit handler, use it
+      if (typeof onSubmit === 'function') {
+        const success = await onSubmit(rating, comment);
+        if (success) {
+          // Reset form only on success
+          setComment('');
+          setRating(3);
+        }
       } else {
-        await addDoc(feedbacksRef, feedbackData);
-        console.log('Added new feedback successfully');
+        // No handler provided - show error
+        console.error('No onSubmit handler provided to StatusUpdateForm');
+        toast.error('Cannot submit vibe - configuration error');
       }
-
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userSnap = await getDoc(userRef);
-      console.log('User document exists:', userSnap.exists(), 'Current points:', userSnap.data()?.points);
-      if (!userSnap.exists()) {
-        await setDoc(userRef, { points: 0 });
-        console.log('Created user document with points: 0');
-      } else if (typeof userSnap.data().points !== 'number') {
-        await setDoc(userRef, { points: 0 }, { merge: true });
-        console.log('Reset points to 0 due to invalid type');
-      }
-      console.log('Attempting to increment points');
-      await updateDoc(userRef, { points: increment(1) });
-      console.log('User points incremented successfully');
-      const updatedSnap = await getDoc(userRef);
-      console.log('Points after increment:', updatedSnap.data().points);
-
-      setRating(null);
-      setComment('');
-      setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 2000);
     } catch (error) {
-      console.error('Error submitting feedback or incrementing points:', error.message, 'Code:', error.code);
+      console.error('Error in StatusUpdateForm:', error);
+      toast.error(`Failed to post vibe: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col items-start space-y-2 w-full">
+    <form onSubmit={handleSubmit} className="flex flex-col items-start space-y-2 w-full max-w-xs">
       <label className="text-white text-sm">
         Busyness (1 = Quiet, 5 = Busy)
       </label>
@@ -83,25 +56,24 @@ export default function StatusUpdateForm({ venueId }) {
         min={1}
         max={5}
         step={1}
-        value={[rating || 1]}
+        value={[rating]}
         onValueChange={(value) => setRating(value[0])}
         className="w-32"
       />
       <Input
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="What’s the vibe like?"
+        placeholder="What's the vibe like?"
         className="bg-white/10 border-white/20 text-white w-full"
+        maxLength={100}
       />
       <Button
         type="submit"
         className="bg-white/20 text-white hover:bg-white/30"
+        disabled={isSubmitting}
       >
-        Post Vibe
+        {isSubmitting ? 'Posting...' : 'Post Vibe'}
       </Button>
-      {submitted && (
-        <p className="text-green-400 text-sm">Vibe posted! +1 point</p>
-      )}
     </form>
   );
 }
