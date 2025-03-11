@@ -10,6 +10,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Users, Info, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { addSnapshot, removeSnapshot } from '../lib/snapshotManager';
 
 const mapContainerStyle = {
   width: '100%',
@@ -186,6 +187,9 @@ export default function Heatmap({ isLoaded }) {
               }
             );
             
+            // Register with snapshot manager
+            addSnapshot(unsubscribe);
+            
             // Store the unsubscribe function for cleanup
             if (typeof unsubscribe === 'function') {
               unsubscribers.push(unsubscribe);
@@ -213,7 +217,10 @@ export default function Heatmap({ isLoaded }) {
       // Safely clean up all listeners
       unsubscribers.forEach(unsub => {
         try {
-          if (typeof unsub === 'function') unsub();
+          if (typeof unsub === 'function') {
+            removeSnapshot(unsub);
+            unsub();
+          }
         } catch (e) {
           console.error('Error unsubscribing:', e);
         }
@@ -270,6 +277,9 @@ export default function Heatmap({ isLoaded }) {
           // Clear any existing data to prevent stale data display
           setRecentVibes(prev => ({...prev, [selectedVenue.id]: []}));
         });
+        
+        // Register with snapshot manager
+        addSnapshot(unsubscribe);
       } catch (error) {
         console.error('Error fetching vibes:', error);
       }
@@ -281,6 +291,7 @@ export default function Heatmap({ isLoaded }) {
     return () => {
       if (unsubscribe && typeof unsubscribe === 'function') {
         try {
+          removeSnapshot(unsubscribe);
           unsubscribe();
         } catch (e) {
           console.error('Error unsubscribing from vibes listener:', e);

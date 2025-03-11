@@ -11,6 +11,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { ArrowLeft, Send, Image, MessageSquare } from 'lucide-react';
+import { addSnapshot, removeSnapshot } from '../../../lib/snapshotManager';
 
 export default function ChatDetailPage() {
   const { currentUser } = useAuth();
@@ -23,7 +24,6 @@ export default function ChatDetailPage() {
   const [recipient, setRecipient] = useState(null);
   const messagesEndRef = useRef(null);
   const [messageSending, setMessageSending] = useState(false);
-  const unsubscribeRef = useRef(null); // Store the unsubscribe function
 
   // Get recipient info from URL params or try to extract from chatId
   const recipientId = searchParams.get('recipient') || chatId.split('_').find(id => id !== currentUser?.uid);
@@ -31,11 +31,6 @@ export default function ChatDetailPage() {
 
   useEffect(() => {
     if (!currentUser) {
-      // Clear any existing listeners and redirect
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
       router.push('/login');
       return;
     }
@@ -71,7 +66,7 @@ export default function ChatDetailPage() {
           const participants = [currentUser.uid, recipientId].sort();
           
           // Create the chat document with initial data
-          await setDoc(chatRef, {  // Changed from updateDoc to setDoc
+          await setDoc(chatRef, {
             participants,
             createdAt: serverTimestamp(),
             lastMessageTimestamp: serverTimestamp(),
@@ -94,11 +89,6 @@ export default function ChatDetailPage() {
         const messagesRef = collection(db, 'messages', chatId, 'messagesList');
         const q = query(messagesRef, orderBy('timestamp', 'asc'));
         
-        // Clean up any existing listener first
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current();
-        }
-        
         const unsubscribe = onSnapshot(q, (snapshot) => {
           const messageList = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -118,18 +108,15 @@ export default function ChatDetailPage() {
           console.error('Snapshot listener error:', error);
           // If it's a permission error and the user is no longer logged in, just clean up
           if (error.code === 'permission-denied' && !currentUser) {
-            if (unsubscribeRef.current) {
-              unsubscribeRef.current();
-              unsubscribeRef.current = null;
-            }
+            // No need to unsubscribe here as it will be handled by the snapshot manager
           } else {
             toast.error('Error loading messages');
           }
           setLoading(false);
         });
 
-        // Store the unsubscribe function
-        unsubscribeRef.current = unsubscribe;
+        // Register with snapshot manager instead of using unsubscribeRef
+        addSnapshot(unsubscribe);
       } catch (error) {
         console.error('Error initializing chat:', error);
         toast.error('Error loading conversation');
@@ -139,13 +126,8 @@ export default function ChatDetailPage() {
 
     initializeChat();
 
-    // Clean up listener when component unmounts or when dependencies change
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
+    // We don't need to clean up here as the snapshot manager will handle it
+    // when the component unmounts or when the user navigates away
   }, [currentUser, chatId, recipientId, router, recipientName]);
 
   // Scroll to bottom when messages change

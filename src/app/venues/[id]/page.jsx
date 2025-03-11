@@ -13,6 +13,7 @@ import { Button } from '../../../components/ui/button';
 import { toast } from 'react-hot-toast';
 import { ChevronLeft, MapPin, Clock, Star, StarOff, Users, Calendar, ExternalLink, Phone, Globe, Tag } from 'lucide-react';
 import Footer from '../../../components/Footer';
+import { addSnapshot, removeSnapshot } from '../../../lib/snapshotManager';
 
 // Get color for busyness level
 const getVibeColor = (score) => {
@@ -138,7 +139,17 @@ export default function VenueDetailPage() {
           );
           
           setVibes(vibesWithUserInfo);
+        }, 
+        (error) => {
+          // Handle errors, especially permission errors when logging out
+          console.error('Feedback listener error:', error);
+          if (error.code === 'permission-denied' && !currentUser) {
+            // No need to handle cleanup here as it will be done in the return
+          }
         });
+        
+        // Register the unsubscribe function with the snapshot manager
+        addSnapshot(unsubscribe);
         
         // Check if venue is in user's favorites
         const userRef = doc(db, 'users', currentUser.uid);
@@ -153,6 +164,7 @@ export default function VenueDetailPage() {
         
         return () => {
           if (typeof unsubscribe === 'function') {
+            removeSnapshot(unsubscribe);
             unsubscribe();
           }
         };

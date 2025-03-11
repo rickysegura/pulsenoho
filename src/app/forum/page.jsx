@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
 
 export default function Forum() {
  const { currentUser } = useAuth();
@@ -67,7 +68,10 @@ export default function Forum() {
      }
    });
 
-   return () => unsubscribe();
+   // Register with snapshot manager instead of manually handling cleanup
+   addSnapshot(unsubscribe);
+   
+   // No need for explicit cleanup as the snapshot manager handles this
  }, [currentUser, router]);
 
  const handleSendMessage = async (e) => {

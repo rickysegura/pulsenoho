@@ -12,6 +12,7 @@ import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Trash2, Edit, Save, MapPin, Users, ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
@@ -67,18 +68,24 @@ export default function AdminDashboard() {
 
     const loadData = async () => {
       try {
-        // Subscribe to venues collection
+        // Subscribe to venues collection using the snapshot manager
         const unsubscribeVenues = onSnapshot(collection(db, 'venues'), (snapshot) => {
           const venueData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setVenues(venueData);
           setLoading(false);
         });
+        
+        // Register with snapshot manager
+        addSnapshot(unsubscribeVenues);
 
-        // Load users
+        // Load users with the snapshot manager
         const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
           const userData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setUsers(userData);
         });
+        
+        // Register with snapshot manager
+        addSnapshot(unsubscribeUsers);
 
         // Load basic statistics
         const venuesSnapshot = await getDocs(collection(db, 'venues'));
@@ -90,10 +97,7 @@ export default function AdminDashboard() {
           totalVibes: 0 // Simplified - not calculating total vibes
         });
 
-        return () => {
-          unsubscribeVenues();
-          unsubscribeUsers();
-        };
+        // No need for explicit cleanup as the snapshot manager handles this
       } catch (error) {
         console.error('Error loading data:', error);
         setLoading(false);
@@ -101,6 +105,8 @@ export default function AdminDashboard() {
     };
 
     loadData();
+    
+    // No need for explicit cleanup as the snapshot manager handles this
   }, [isAdmin]);
 
   const handleAddVenue = async (e) => {
@@ -188,7 +194,7 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <Link href="/" className="text-gray-300 hover:text-white inline-flex items-center mb-2">
+            <Link href="/dashboard" className="text-gray-300 hover:text-white inline-flex items-center mb-2">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back to Home
             </Link>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>

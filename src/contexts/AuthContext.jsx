@@ -47,6 +47,13 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);
+
+      // If user logs out, clear all Firestore listeners
+      if (!user) {
+        import('../lib/snapshotManager').then(({ clearAllSnapshots }) => {
+          clearAllSnapshots();
+        });
+      }
     });
 
     // Cleanup on unmount

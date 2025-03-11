@@ -23,7 +23,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             className="text-white hover:text-gray-200 underline"
           >
-            Claude Sonnet 3.7
+            Claude 3.7 Sonnet
           </a>
           {' '}— Powered by{' '}
           <a

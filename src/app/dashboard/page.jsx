@@ -6,7 +6,6 @@ import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Heatmap from '../../components/Heatmap';
-import VenueManager from '../../components/VenueManager';
 import AuthComponent from '../../components/AuthComponent';
 import Footer from '../../components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -16,6 +15,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MapContext } from '../ClientLayout';
 import { MapPin, List, User, Users, ArrowRight, Clock, Star, Shield, LogOut } from 'lucide-react';
+import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -116,7 +116,10 @@ export default function Dashboard() {
       }
     );
 
-    return () => unsubscribe();
+    // Register with snapshot manager instead of manually cleaning up
+    addSnapshot(unsubscribe);
+    
+    // No need for explicit cleanup as the snapshot manager handles this
   }, [currentUser]);
 
   const handleVenueCountChange = (count) => {
@@ -224,19 +227,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-6">
-        <main className="flex-1">
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-semibold text-white">Venues ({venueCount})</CardTitle>
-              <Link href="/venues" className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center">
-                View All <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <VenueManager onVenueCountChange={handleVenueCountChange} />
-            </CardContent>
-          </Card>
-          
+        <main className="flex-1">          
           {/* Quick Actions */}
           <Card className="bg-white/5 backdrop-blur-sm border-white/10 mt-6">
             <CardHeader>

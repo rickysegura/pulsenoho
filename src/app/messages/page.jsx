@@ -11,6 +11,7 @@ import { Badge } from '../../components/ui/badge';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MessageSquare, ArrowLeft, Search, Users } from 'lucide-react';
+import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
 
 export default function MessagesPage() {
   const { currentUser } = useAuth();
@@ -76,8 +77,17 @@ export default function MessagesPage() {
           setLoading(false);
         }, (error) => {
           console.error('Error fetching conversations:', error);
+          
+          // Handle permission errors
+          if (error.code === 'permission-denied' && !currentUser) {
+            // Clean up will be handled in the return function
+          }
+          
           setLoading(false);
         });
+        
+        // Register with snapshot manager
+        addSnapshot(unsubscribe);
         
         // Store the unsubscribe function
         unsubscribersRef.current.push(unsubscribe);
@@ -109,7 +119,10 @@ export default function MessagesPage() {
 
     // Cleanup function to unsubscribe from all listeners when component unmounts
     return () => {
-      unsubscribersRef.current.forEach(unsubscribe => unsubscribe());
+      unsubscribersRef.current.forEach(unsubscribe => {
+        removeSnapshot(unsubscribe);
+        unsubscribe();
+      });
       unsubscribersRef.current = [];
     };
   }, [currentUser, router]);

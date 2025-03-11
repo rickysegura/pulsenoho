@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, getDocs, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Link from 'next/link';
 import Image from 'next/image';
+import StatusUpdateForm from '../../components/StatusUpdateForm';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { ChevronLeft, MapPin, Clock, CalendarDays, Star, Users } from 'lucide-react';
+import { ChevronLeft, MapPin, Clock, CalendarDays, Star, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import Footer from '../../components/Footer';
+import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
 
 // Get color for busyness level - moved outside of components so it's available to all
 const getVibeColor = (score) => {
@@ -30,10 +32,13 @@ export default function VenuesPage() {
   const [loading, setLoading] = useState(true);
   const [userContributions, setUserContributions] = useState([]);
   const [userFavorites, setUserFavorites] = useState([]);
+  const [venueCount, setVenueCount] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    // If no user, just set loading to false and return
     if (!currentUser) {
-      // Redirect non-authenticated users or show limited content
       setLoading(false);
       return;
     }
@@ -50,49 +55,68 @@ export default function VenuesPage() {
         }));
         
         setVenues(venueData);
+        setVenueCount(venueData.length);
         
         // Set up listeners for each venue to get feedback data
-        const unsubscribers = venueData.map(venue => {
+        venueData.forEach(venue => {
           const feedbacksRef = collection(db, `venues/${venue.id}/feedbacks`);
-          return onSnapshot(feedbacksRef, async (feedbackSnapshot) => {
-            const feedbacks = feedbackSnapshot.docs.map(doc => ({
-              id: doc.id,
-              venueId: venue.id,
-              venueName: venue.name,
-              ...doc.data()
-            }));
-            
-            // Update user contributions
-            const userVibes = feedbacks.filter(
-              feedback => feedback.userId === currentUser.uid
+          
+          try {
+            const unsubscribe = onSnapshot(
+              feedbacksRef, 
+              async (feedbackSnapshot) => {
+                if (!isMounted) return;
+                
+                const feedbacks = feedbackSnapshot.docs.map(doc => ({
+                  id: doc.id,
+                  venueId: venue.id,
+                  venueName: venue.name,
+                  ...doc.data()
+                }));
+                
+                // Update user contributions
+                const userVibes = feedbacks.filter(
+                  feedback => feedback.userId === currentUser?.uid
+                );
+                
+                if (userVibes.length > 0) {
+                  setUserContributions(prev => {
+                    const existing = prev.filter(item => item.venueId !== venue.id);
+                    return [...existing, ...userVibes];
+                  });
+                }
+                
+                // Calculate busyness score
+                if (feedbacks.length > 0) {
+                  const ratings = feedbacks.map(item => item.rating || 0);
+                  const avgScore = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+                  
+                  setVenues(prev => 
+                    prev.map(v => {
+                      if (v.id === venue.id) {
+                        return {
+                          ...v,
+                          busynessScore: avgScore,
+                          vibeCount: feedbacks.length
+                        };
+                      }
+                      return v;
+                    })
+                  );
+                }
+              },
+              (error) => {
+                // Handle errors, especially permission errors when logging out
+                console.error('Feedback listener error:', error);
+              }
             );
             
-            if (userVibes.length > 0) {
-              setUserContributions(prev => {
-                const existing = prev.filter(item => item.venueId !== venue.id);
-                return [...existing, ...userVibes];
-              });
-            }
+            // Register with snapshot manager
+            addSnapshot(unsubscribe);
             
-            // Calculate busyness score
-            if (feedbacks.length > 0) {
-              const ratings = feedbacks.map(item => item.rating || 0);
-              const avgScore = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-              
-              setVenues(prev => 
-                prev.map(v => {
-                  if (v.id === venue.id) {
-                    return {
-                      ...v,
-                      busynessScore: avgScore,
-                      vibeCount: feedbacks.length
-                    };
-                  }
-                  return v;
-                })
-              );
-            }
-          });
+          } catch (error) {
+            console.error('Error setting up venue listener:', error);
+          }
         });
         
         // Fetch user favorites 
@@ -107,22 +131,27 @@ export default function VenuesPage() {
         }
         
         setLoading(false);
-        
-        return () => {
-          unsubscribers.forEach(unsub => {
-            if (typeof unsub === 'function') {
-              unsub();
-            }
-          });
-        };
       } catch (error) {
         console.error('Error fetching venue data:', error);
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchData();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      // No need to manually clean up listeners; the snapshot manager handles this
+    };
   }, [currentUser]);
+
+  // Handle venue count change from VenueManager
+  const handleVenueCountChange = (count) => {
+    setVenueCount(count);
+  };
 
   // Filter venues based on active tab
   const filteredVenues = () => {
@@ -179,7 +208,7 @@ export default function VenuesPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Venues</h1>
+          <h1 className="text-2xl font-bold">Venues ({venueCount})</h1>
         </div>
         
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
@@ -350,10 +379,12 @@ function VenueCard({ venue, isFavorite, showContributions, contributions }) {
           </div>
         )}
         
-        <div className="mt-4">
-          <Link href={`/venues/${venue.id}`}>
+        <div className="mt-4 flex items-center gap-2">
+          <Link href={`/venues/${venue.id}`} className="flex-1">
             <Button className="w-full" variant="secondary">View Details</Button>
           </Link>
+          
+          <StatusUpdateForm venueId={venue.id} className="flex-none" />
         </div>
       </CardContent>
     </Card>
