@@ -15,7 +15,7 @@ import { Badge } from '../../components/ui/badge';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapContext } from '../ClientLayout';
-import { MapPin, List, Users, ArrowRight, Clock, Star, Shield, LogOut } from 'lucide-react';
+import { MapPin, List, User, Users, ArrowRight, Clock, Star, Shield, LogOut } from 'lucide-react';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -347,7 +347,7 @@ export default function Dashboard() {
                         variant="outline" 
                         className="w-full bg-white/5 hover:bg-white/10 border-white/10 text-white"
                       >
-                        Edit Profile
+                        Account Settings
                       </Button>
                     </Link>
                   </div>

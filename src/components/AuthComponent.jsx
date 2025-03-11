@@ -10,7 +10,7 @@ import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-import { LogOut, Mail, Lock, User, LogIn } from 'lucide-react';
+import { LogOut, Mail, Lock, LogIn } from 'lucide-react';
 
 export default function AuthComponent() {
   const { currentUser } = useAuth();
@@ -77,13 +77,6 @@ export default function AuthComponent() {
         </div>
         
         <div className="flex flex-col space-y-2">
-          <Link href="/settings">
-            <Button variant="outline" className="w-full justify-start text-gray-300 border-gray-700 hover:text-white hover:bg-white/10">
-              <User className="h-4 w-4 mr-2" />
-              Account Settings
-            </Button>
-          </Link>
-          
           <Button 
             onClick={handleLogout} 
             variant="destructive" 

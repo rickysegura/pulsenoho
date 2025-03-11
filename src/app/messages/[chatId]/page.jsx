@@ -23,6 +23,7 @@ export default function ChatDetailPage() {
   const [recipient, setRecipient] = useState(null);
   const messagesEndRef = useRef(null);
   const [messageSending, setMessageSending] = useState(false);
+  const unsubscribeRef = useRef(null); // Store the unsubscribe function
 
   // Get recipient info from URL params or try to extract from chatId
   const recipientId = searchParams.get('recipient') || chatId.split('_').find(id => id !== currentUser?.uid);
@@ -30,6 +31,11 @@ export default function ChatDetailPage() {
 
   useEffect(() => {
     if (!currentUser) {
+      // Clear any existing listeners and redirect
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
       router.push('/login');
       return;
     }
@@ -88,6 +94,11 @@ export default function ChatDetailPage() {
         const messagesRef = collection(db, 'messages', chatId, 'messagesList');
         const q = query(messagesRef, orderBy('timestamp', 'asc'));
         
+        // Clean up any existing listener first
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+        }
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
           const messageList = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -102,11 +113,23 @@ export default function ChatDetailPage() {
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
           }, 100);
+        }, (error) => {
+          // Handle errors in the snapshot listener
+          console.error('Snapshot listener error:', error);
+          // If it's a permission error and the user is no longer logged in, just clean up
+          if (error.code === 'permission-denied' && !currentUser) {
+            if (unsubscribeRef.current) {
+              unsubscribeRef.current();
+              unsubscribeRef.current = null;
+            }
+          } else {
+            toast.error('Error loading messages');
+          }
+          setLoading(false);
         });
 
-        return () => {
-          unsubscribe();
-        };
+        // Store the unsubscribe function
+        unsubscribeRef.current = unsubscribe;
       } catch (error) {
         console.error('Error initializing chat:', error);
         toast.error('Error loading conversation');
@@ -115,6 +138,14 @@ export default function ChatDetailPage() {
     };
 
     initializeChat();
+
+    // Clean up listener when component unmounts or when dependencies change
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [currentUser, chatId, recipientId, router, recipientName]);
 
   // Scroll to bottom when messages change
@@ -238,6 +269,21 @@ export default function ChatDetailPage() {
       <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
         <div className="w-16 h-16 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
         <p className="mt-4 text-xl">Loading conversation...</p>
+      </div>
+    );
+  }
+
+  // Add a guard to prevent rendering when currentUser is null
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+        <p className="text-xl">You need to be logged in to view this conversation.</p>
+        <Button 
+          onClick={() => router.push('/login')} 
+          className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+        >
+          Log In
+        </Button>
       </div>
     );
   }
