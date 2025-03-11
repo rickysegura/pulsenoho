@@ -1,76 +1,91 @@
-// src/contexts/AuthContext.js - With combined user data
 'use client';
 
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { auth } from '../lib/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  onAuthStateChanged
+} from 'firebase/auth';
 
+// Create the auth context
 const AuthContext = createContext();
 
+// Auth provider component
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Store all active Firebase listeners for proper cleanup
+  const [activeListeners, setActiveListeners] = useState([]);
 
-  useEffect(() => {
-    // First, listen for auth state changes
-    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("Auth state changed:", user ? user.uid : 'logged out');
-      setCurrentUser(user);
-      
-      if (!user) {
-        setUserData(null);
-        setLoading(false);
+  // Handle adding a new listener
+  const addListener = (unsubscribe) => {
+    setActiveListeners(prev => [...prev, unsubscribe]);
+    return unsubscribe;
+  };
+
+  // Handle removing a listener
+  const removeListener = (unsubscribe) => {
+    setActiveListeners(prev => prev.filter(listener => listener !== unsubscribe));
+    unsubscribe();
+  };
+
+  // Clear all listeners
+  const clearAllListeners = () => {
+    activeListeners.forEach(unsubscribe => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
       }
     });
-    
-    return () => authUnsubscribe();
-  }, []);
-  
-  // Set up a separate effect for Firestore user data
-  useEffect(() => {
-    let userUnsubscribe = () => {};
-    
-    if (currentUser) {
-      console.log("Setting up Firestore listener for user:", currentUser.uid);
-      const userRef = doc(db, 'users', currentUser.uid);
-      
-      userUnsubscribe = onSnapshot(
-        userRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            console.log("User data updated in Firestore:", docSnap.id);
-            setUserData(docSnap.data());
-          } else {
-            console.log("No user document found");
-            setUserData({
-              username: currentUser.email?.split('@')[0] || 'User',
-              points: 0
-            });
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error getting user data:", error);
-          setUserData({
-            username: currentUser.email?.split('@')[0] || 'User',
-            points: 0
-          });
-          setLoading(false);
-        }
-      );
-    }
-    
-    return () => userUnsubscribe();
-  }, [currentUser]);
+    setActiveListeners([]);
+  };
 
-  // Memoize context value to prevent unnecessary re-renders
-  const value = useMemo(() => ({
+  useEffect(() => {
+    // Set up auth state listener
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      unsubscribe();
+      clearAllListeners();
+    };
+  }, []);
+
+  // Sign up function
+  const signup = (email, password) => {
+    return createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  // Sign in function
+  const signin = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  // Sign out function
+  const signout = async () => {
+    // Clear all listeners first to prevent permission errors
+    clearAllListeners();
+    
+    // Then sign out
+    await firebaseSignOut(auth);
+    setCurrentUser(null);
+  };
+
+  // Value to be provided to consumers
+  const value = {
     currentUser,
-    userData,
-    loading
-  }), [currentUser, userData, loading]);
+    signin,
+    signup,
+    signout,
+    loading,
+    addListener,
+    removeListener
+  };
 
   return (
     <AuthContext.Provider value={value}>
@@ -79,10 +94,7 @@ export function AuthProvider({ children }) {
   );
 }
 
+// Custom hook to use the auth context
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 }

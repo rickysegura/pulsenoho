@@ -111,7 +111,7 @@ export default function Forum() {
            <Button 
              variant="ghost" 
              size="sm"
-             onClick={() => router.push('/')} 
+             onClick={() => router.push('/dashboard')} 
              className="text-gray-300 hover:text-white"
            >
              Home

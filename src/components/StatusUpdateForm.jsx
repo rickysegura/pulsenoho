@@ -1,79 +1,133 @@
-// src/components/StatusUpdateForm.js - With callback support
 'use client';
 
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Slider } from './ui/slider';
+import { collection, addDoc, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function StatusUpdateForm({ venueId, onSubmit }) {
+export default function StatusUpdateForm({ venueId, onSubmit, className }) {
+  const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(3);
   const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { currentUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!currentUser || !venueId) return;
     
-    if (!rating || !currentUser || !venueId) {
-      toast.error('Missing required information');
-      return;
-    }
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    setSubmitting(true);
     
     try {
-      // If parent provided an onSubmit handler, use it
+      // Add feedback document
+      const feedbackData = {
+        userId: currentUser.uid,
+        rating: Number(rating),
+        comment: comment || '',
+        timestamp: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, `venues/${venueId}/feedbacks`), feedbackData);
+      
+      // Update user points
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        points: increment(1)
+      }, { merge: true });
+      
+      toast.success('Vibe posted! +1 point');
+      
+      // Reset form
+      setComment('');
+      setShowForm(false);
+      
+      // Notify parent component if needed
       if (typeof onSubmit === 'function') {
-        const success = await onSubmit(rating, comment);
-        if (success) {
-          // Reset form only on success
-          setComment('');
-          setRating(3);
-        }
-      } else {
-        // No handler provided - show error
-        console.error('No onSubmit handler provided to StatusUpdateForm');
-        toast.error('Cannot submit vibe - configuration error');
+        onSubmit(rating, comment);
       }
     } catch (error) {
-      console.error('Error in StatusUpdateForm:', error);
+      console.error('Error submitting vibe:', error);
       toast.error(`Failed to post vibe: ${error.message}`);
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col items-start space-y-2 w-full max-w-xs">
-      <label className="text-white text-sm">
-        Busyness (1 = Quiet, 5 = Busy)
-      </label>
-      <Slider
-        min={1}
-        max={5}
-        step={1}
-        value={[rating]}
-        onValueChange={(value) => setRating(value[0])}
-        className="w-32"
-      />
-      <Input
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="What's the vibe like?"
-        className="bg-white/10 border-white/20 text-white w-full"
-        maxLength={100}
-      />
-      <Button
-        type="submit"
-        className="bg-white/20 text-white hover:bg-white/30"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Posting...' : 'Post Vibe'}
+  if (!currentUser) {
+    return (
+      <Button disabled className="opacity-50 cursor-not-allowed">
+        <Lock className="h-3.5 w-3.5 mr-1" />
+        Add Vibe
       </Button>
-    </form>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <Button 
+        onClick={() => setShowForm(!showForm)}
+        className={showForm ? "bg-gray-700 hover:bg-gray-600" : ""}
+      >
+        {showForm ? 'Cancel' : 'Add Vibe'}
+      </Button>
+      
+      {showForm && (
+        <div className="mt-3 p-3 rounded-lg bg-gray-800/70 border border-white/10">
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                How busy is it? (1-5)
+              </label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(value => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                      rating >= value 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-gray-700 text-gray-400'
+                    }`}
+                  >
+                    {value}
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-gray-400">
+                  {rating === 1 ? 'Empty' : 
+                   rating === 2 ? 'Quiet' : 
+                   rating === 3 ? 'Moderate' : 
+                   rating === 4 ? 'Busy' : 'Packed'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Comment (optional)
+              </label>
+              <textarea
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                className="w-full p-2 rounded bg-gray-900/50 border border-gray-700 text-white text-sm"
+                placeholder="Any notes about the vibe?"
+                rows={2}
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              disabled={submitting}
+              className="w-full"
+            >
+              {submitting ? 'Submitting...' : 'Post Update'}
+            </Button>
+          </form>
+        </div>
+      )}
+    </div>
   );
 }

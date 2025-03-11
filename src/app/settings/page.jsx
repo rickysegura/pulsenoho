@@ -161,7 +161,7 @@ export default function Settings() {
             )}
           </form>
           <Button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="bg-gray-700 text-white hover:bg-gray-600 w-full"
           >
             Back to Home

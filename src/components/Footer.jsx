@@ -1,4 +1,3 @@
-// src/components/Footer.js
 'use client';
 
 import { Card } from './ui/card';
@@ -16,6 +15,15 @@ export default function Footer() {
             className="text-white hover:text-gray-200 underline"
           >
             Grok
+          </a>
+          {' '}and{' '}
+          <a
+            href="https://claude.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-gray-200 underline"
+          >
+            Claude Sonnet 3.7
           </a>
           {' '}— Powered by{' '}
           <a
