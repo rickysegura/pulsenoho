@@ -57,7 +57,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   <Link href="/signup">
-                    <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 px-6">
+                    <Button size="lg" className="text-white border-white hover:bg-white/10 px-6">
                       Sign Up
                     </Button>
                   </Link>
@@ -226,7 +226,7 @@ export default function LandingPage() {
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 px-6">
+                  <Button size="lg" className="text-white border-white hover:bg-white/10 px-6">
                     Sign Up
                   </Button>
                 </Link>
