@@ -485,7 +485,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                           <Link href={`/profile/${user.id}`}>
-                            <Button variant="outline" size="sm" className="text-white border-white/20 hover:bg-white/10">
+                            <Button size="sm" className="text-white border-white/20 hover:bg-white/10">
                               View Profile
                             </Button>
                           </Link>
@@ -498,14 +498,6 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
-        
-        <div className="mt-6 text-center">
-          <Link href="/dashboard">
-            <Button className="bg-gray-700 hover:bg-gray-600 text-white">
-              Back to Home
-            </Button>
-          </Link>
-        </div>
       </div>
     </div>
   );

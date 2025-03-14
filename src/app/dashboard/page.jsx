@@ -217,17 +217,17 @@ export default function Dashboard() {
       <div className="relative w-full px-4 mt-4">
         {showMap ? (
           <div className="relative w-full py-6">
-          <Link href="/map">
-            <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity border border-white/10">
+            <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center border border-white/10">
               <div className="text-center">
                 <h2 className="text-2xl font-semibold text-white">View Live Venue Map</h2>
                 <p className="text-gray-400 mt-2">See real-time busyness levels across North Hollywood</p>
-                <Button className="mt-4 bg-indigo-600 hover:bg-indigo-700">
-                  <MapPin className="h-4 w-4 mr-2" /> Open Map
-                </Button>
+                <Link href="/map">
+                  <Button className="mt-4 bg-indigo-600 hover:bg-indigo-700">
+                    <MapPin className="h-4 w-4 mr-2" /> Open Map
+                  </Button>
+                </Link>
               </div>
             </div>
-          </Link>
         </div>
         ) : (
           <div className="w-full h-96 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center">
@@ -238,42 +238,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Mobile Action Buttons - Only show buttons not in bottom nav */}
-      <div className="md:hidden flex w-full overflow-x-auto px-4 py-3 gap-2 scrollbar-hide">
-        <Link href="/messages">
-          <Button 
-            variant="outline"
-            size="sm" 
-            className="bg-white/5 hover:bg-white/10 border-white/10 text-white whitespace-nowrap"
-          >
-            Messages
-          </Button>
-        </Link>
-        
-        <Link href="/settings">
-          <Button 
-            variant="outline"
-            size="sm" 
-            className="bg-white/5 hover:bg-white/10 border-white/10 text-white whitespace-nowrap"
-          >
-            Settings
-          </Button>
-        </Link>
-        
-        {userData.isAdmin && (
-          <Link href="/admin">
-            <Button 
-              variant="outline"
-              size="sm" 
-              className="bg-white/5 hover:bg-white/10 border-white/10 text-white whitespace-nowrap"
-            >
-              <Shield className="h-4 w-4 mr-1" />
-              Admin
-            </Button>
-          </Link>
         )}
       </div>
 

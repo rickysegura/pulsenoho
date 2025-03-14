@@ -362,14 +362,6 @@ export default function UserProfile() {
               </div>
             )}
           </CardContent>
-          
-          <CardFooter className="flex justify-center pt-2 border-t border-white/10">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="text-gray-300 hover:text-white">
-                Back to Dashboard
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
       </div>
     </div>
