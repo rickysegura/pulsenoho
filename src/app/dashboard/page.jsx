@@ -216,7 +216,19 @@ export default function Dashboard() {
       {/* Hero Section with Heatmap */}
       <div className="relative w-full px-4 mt-4">
         {showMap ? (
-          <Heatmap isLoaded={isMapLoaded} />
+          <div className="relative w-full py-6">
+          <Link href="/map">
+            <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity border border-white/10">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold text-white">View Live Venue Map</h2>
+                <p className="text-gray-400 mt-2">See real-time busyness levels across North Hollywood</p>
+                <Button className="mt-4 bg-indigo-600 hover:bg-indigo-700">
+                  <MapPin className="h-4 w-4 mr-2" /> Open Map
+                </Button>
+              </div>
+            </div>
+          </Link>
+        </div>
         ) : (
           <div className="w-full h-96 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -227,28 +239,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        
-        <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm text-white text-sm px-3 py-2 rounded-lg hidden md:block">
-          <p className="font-medium mb-1">Map Legend:</p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-green-600 mr-1"></div>
-              <span>Quiet</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-yellow-600 mr-1"></div>
-              <span>Moderate</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-red-600 mr-1"></div>
-              <span>Busy</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-gray-600 mr-1"></div>
-              <span>No Data</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Mobile Action Buttons - Only show buttons not in bottom nav */}
@@ -291,7 +281,7 @@ export default function Dashboard() {
       <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-3 md:mt-6">
         <main className="flex-1">          
           {/* Quick Actions */}
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 mt-3 md:mt-6">
+          <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">Quick Actions</CardTitle>
             </CardHeader>
