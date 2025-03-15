@@ -3,7 +3,7 @@ import ClientLayout from './ClientLayout';
 import './globals.css';
 
 export const metadata = {
-  title: "North Hollywood Live",
+  title: "PulseNoHo",
   description: "Built by Ricky Segura",
 };
 

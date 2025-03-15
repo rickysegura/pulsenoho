@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import Heatmap from '../../components/Heatmap';
 import AuthComponent from '../../components/AuthComponent';
 import Footer from '../../components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -14,8 +13,8 @@ import { Badge } from '../../components/ui/badge';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapContext } from '../ClientLayout';
-import { MapPin, List, User, Users, ArrowRight, Clock, Star, Shield, LogOut, Menu, X } from 'lucide-react';
-import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
+import { MapPin, List, User, Users, ArrowRight, Shield } from 'lucide-react';
+import { addSnapshot } from '../../lib/snapshotManager';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -146,7 +145,7 @@ export default function Dashboard() {
       <nav className="bg-gray-800 border-b border-white/10 py-3 px-4 z-10">
         <div className="container mx-auto flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-white flex items-center">
-            NoHo Live 🚦
+            PulseNoHo 🚦
           </Link>
           
           {/* Desktop Navigation */}

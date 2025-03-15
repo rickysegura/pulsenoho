@@ -287,7 +287,6 @@ export default function UserProfile() {
                 <>
                   <Button
                     onClick={handleFollowToggle}
-                    variant={isFollowing ? "outline" : "default"}
                     className={isFollowing ? "border-white/20 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}
                   >
                     {isFollowing ? (

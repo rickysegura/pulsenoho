@@ -36,7 +36,7 @@ export default function LandingPage() {
         <div className="container mx-auto relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white mb-6 drop-shadow-md">
-              NoHo Live 🚦
+              PulseNoHo 🚦
             </h1>
             <p className="text-xl md:text-2xl text-gray-200 mb-8">
               Check the vibe before you arrive. Real-time busyness levels for North Hollywood venues.
@@ -209,7 +209,7 @@ export default function LandingPage() {
       <section className="py-12 px-4 bg-gradient-to-r from-indigo-800 to-purple-800">
         <div className="container mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">Ready to explore NoHo?</h2>
-          <p className="text-xl text-white/80 mb-6">Join NoHo Live and discover the best spots in town.</p>
+          <p className="text-xl text-white/80 mb-6">Join PulseNoHo and discover the best spots in town.</p>
           
           <div className="flex flex-wrap justify-center gap-4">
             {currentUser ? (

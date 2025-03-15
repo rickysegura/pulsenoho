@@ -95,7 +95,7 @@ export default function SignUp() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-semibold text-white text-center">Create Account</CardTitle>
           <CardDescription className="text-gray-400 text-center">
-            Join NoHo Live to start checking venue vibes
+            Join PulseNoHo to start checking venue vibes
           </CardDescription>
         </CardHeader>
         

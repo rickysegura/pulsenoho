@@ -63,7 +63,7 @@ export default function Login() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-semibold text-white text-center">Welcome Back</CardTitle>
           <CardDescription className="text-gray-400 text-center">
-            Log in to your NoHo Live account
+            Log in to your PulseNoHo account
           </CardDescription>
         </CardHeader>
         
