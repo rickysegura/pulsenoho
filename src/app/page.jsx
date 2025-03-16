@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import Footer from '../components/Footer';
 import { ArrowRight, MapPin, Clock, Star, Users, Shield } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LandingPage() {
   const { currentUser, loading } = useAuth();
@@ -35,9 +36,15 @@ export default function LandingPage() {
         
         <div className="container mx-auto relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white mb-6 drop-shadow-md">
-              PulseNoHo 🚦
-            </h1>
+            <div className="flex justify-center mb-6">
+              <Image 
+                src="/logo_blue.png" 
+                alt="PulseNoHo Logo" 
+                width={300} 
+                height={100} 
+                className="drop-shadow-md"
+              />
+            </div>
             <p className="text-xl md:text-2xl text-gray-200 mb-8">
               Check the vibe before you arrive. Real-time busyness levels for North Hollywood venues.
             </p>

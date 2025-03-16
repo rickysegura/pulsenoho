@@ -144,9 +144,14 @@ export default function Dashboard() {
       {/* Top Navigation */}
       <nav className="bg-gray-800 border-b border-white/10 py-3 px-4 z-10">
         <div className="container mx-auto flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white flex items-center">
-            PulseNoHo 🚦
-          </Link>
+        <Link href="/" className="flex items-center">
+          <Image 
+            src="/logo_blue.png" 
+            alt="PulseNoHo Logo" 
+            width={125}
+            height={50}
+          />
+        </Link>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4">
