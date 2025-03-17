@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { UserPlus, Mail, Lock, Home, AlertCircle, User } from 'lucide-react';
+import Image from 'next/image';
 
 export default function SignUp() {
   const { currentUser } = useAuth();
@@ -93,6 +94,15 @@ export default function SignUp() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-6">
+            <Image 
+              src="/logo_blue.png" 
+              alt="PulseNoHo Logo" 
+              width={300} 
+              height={100} 
+              className="drop-shadow-md"
+            />
+          </div>
           <CardTitle className="text-2xl font-semibold text-white text-center">Create Account</CardTitle>
           <CardDescription className="text-gray-400 text-center">
             Join PulseNoHo to start checking venue vibes

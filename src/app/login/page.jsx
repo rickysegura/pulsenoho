@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { LogIn, Mail, Lock, Home, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Login() {
   const { currentUser } = useAuth();
@@ -61,6 +62,15 @@ export default function Login() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-6">
+            <Image 
+              src="/logo_blue.png" 
+              alt="PulseNoHo Logo" 
+              width={300} 
+              height={100} 
+              className="drop-shadow-md"
+            />
+          </div>
           <CardTitle className="text-2xl font-semibold text-white text-center">Welcome Back</CardTitle>
           <CardDescription className="text-gray-400 text-center">
             Log in to your PulseNoHo account

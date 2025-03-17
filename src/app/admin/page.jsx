@@ -10,9 +10,17 @@ import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Trash2, Edit, Save, MapPin, Users, ArrowLeft, Plus } from 'lucide-react';
+import { 
+  Trash2, 
+  Edit, 
+  Save, 
+  MapPin, 
+  ArrowLeft, 
+  Plus
+} from 'lucide-react';
 import Link from 'next/link';
-import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
+import { addSnapshot } from '../../lib/snapshotManager';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
@@ -72,6 +80,13 @@ export default function AdminDashboard() {
         const unsubscribeVenues = onSnapshot(collection(db, 'venues'), (snapshot) => {
           const venueData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setVenues(venueData);
+          
+          // Update the stats data with the new venue count
+          setStatsData(prev => ({
+            ...prev,
+            totalVenues: snapshot.docs.length
+          }));
+          
           setLoading(false);
         });
         
@@ -82,25 +97,23 @@ export default function AdminDashboard() {
         const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
           const userData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setUsers(userData);
+          
+          // Update users count
+          setStatsData(prev => ({
+            ...prev,
+            totalUsers: snapshot.docs.length
+          }));
         });
         
         // Register with snapshot manager
         addSnapshot(unsubscribeUsers);
 
-        // Load basic statistics
-        const venuesSnapshot = await getDocs(collection(db, 'venues'));
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        
-        setStatsData({
-          totalVenues: venuesSnapshot.size,
-          totalUsers: usersSnapshot.size,
-          totalVibes: 0 // Simplified - not calculating total vibes
-        });
-
         // No need for explicit cleanup as the snapshot manager handles this
       } catch (error) {
         console.error('Error loading data:', error);
         setLoading(false);
+        
+        toast.error("Failed to load dashboard data. Please try refreshing.");
       }
     };
 
@@ -114,13 +127,16 @@ export default function AdminDashboard() {
     if (!newVenue.name || !newVenue.type || !newVenue.lat || !newVenue.lng) return;
 
     try {
-      await addDoc(collection(db, 'venues'), {
+      const docRef = await addDoc(collection(db, 'venues'), {
         name: newVenue.name,
         type: newVenue.type,
         lat: parseFloat(newVenue.lat),
         lng: parseFloat(newVenue.lng),
         address: newVenue.address || ''
       });
+      
+      // Display success toast
+      toast.success(`"${newVenue.name}" has been added successfully.`);
       
       // Reset form
       setNewVenue({ 
@@ -133,18 +149,28 @@ export default function AdminDashboard() {
       
     } catch (error) {
       console.error('Error adding venue:', error);
+      
+      // Display error toast
+      toast.error("An error occurred while adding the venue. Please try again.");
     }
   };
 
-  const handleRemoveVenue = async (venueId) => {
+  const handleRemoveVenue = async (venueId, venueName) => {
     if (!confirm('Are you sure you want to delete this venue? This action cannot be undone.')) {
       return;
     }
     
     try {
       await deleteDoc(doc(db, 'venues', venueId));
+      
+      // Display success toast
+      toast.success(`"${venueName}" has been removed.`);
+      
     } catch (error) {
       console.error('Error removing venue:', error);
+      
+      // Display error toast
+      toast.error("An error occurred while deleting the venue. Please try again.");
     }
   };
 
@@ -165,9 +191,15 @@ export default function AdminDashboard() {
         address: editingVenue.address || ''
       });
       
+      // Display success toast
+      toast.success(`"${editingVenue.name}" has been updated successfully.`);
+      
       setEditingVenue(null);
     } catch (error) {
       console.error('Error updating venue:', error);
+      
+      // Display error toast
+      toast.error("An error occurred while updating the venue. Please try again.");
     }
   };
 
@@ -189,7 +221,29 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col p-4">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col p-4 relative">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: 'rgba(34, 197, 94, 0.9)',
+            },
+          },
+          error: {
+            duration: 4000,
+            style: {
+              background: 'rgba(220, 38, 38, 0.9)',
+            },
+          },
+        }}
+      />
+      
       <div className="container mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -415,7 +469,7 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleRemoveVenue(venue.id)}
+                                  onClick={() => handleRemoveVenue(venue.id, venue.name)}
                                   className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
                                 >
                                   <Trash2 className="h-4 w-4" />
