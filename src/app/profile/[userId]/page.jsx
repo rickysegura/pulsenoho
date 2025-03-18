@@ -270,14 +270,14 @@ export default function UserProfile() {
                 )}
                 
                 <div className="flex gap-4">
-                  <div className="text-gray-300 text-sm flex flex-col items-center">
+                  <Link href={`/profile/${profile.id}/followers`} className="text-gray-300 text-sm flex flex-col items-center hover:text-indigo-300 transition-colors">
                     <span className="text-white font-bold">{profile.followers.length}</span>
                     <span>Followers</span>
-                  </div>
-                  <div className="text-gray-300 text-sm flex flex-col items-center">
+                  </Link>
+                  <Link href={`/profile/${profile.id}/following`} className="text-gray-300 text-sm flex flex-col items-center hover:text-indigo-300 transition-colors">
                     <span className="text-white font-bold">{profile.following.length}</span>
                     <span>Following</span>
-                  </div>
+                  </Link>
                 </div>
               </div>
             </div>
