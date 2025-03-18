@@ -1,8 +1,12 @@
-# NoHo Live
+# PulseNoHo
 
-A real-time venue crowd monitoring app for North Hollywood, built with Next.js and Firebase.
+Check the vibe before you arrive. A real-time venue crowd monitoring app for North Hollywood, built with Next.js and Firebase.
 
-![NoHo Live Screenshot](public/screenshot.png)
+![PulseNoHo](public/screenshot.jpeg)
+
+## About
+
+PulseNoHo is a community-driven platform designed to help people discover the real-time vibe of venues in North Hollywood. Whether you're looking for a quiet coffee shop to work from, a lively bar for Friday night, or a moderate-energy restaurant for a dinner date, PulseNoHo provides real-time insights from the community.
 
 ## Features
 
@@ -11,14 +15,19 @@ A real-time venue crowd monitoring app for North Hollywood, built with Next.js a
 - **User Authentication**: Create an account to participate
 - **Point System**: Earn points for contributing venue vibes
 - **User Profiles**: Customize your profile and follow other users
+- **Social Features**: Follow other users and view their activity
+- **Direct Messaging**: Chat with other community members
+- **Admin Dashboard**: Manage venues and users (admin only)
 - **Heat Map**: Visual representation of venue busyness across NoHo
+- **Community Forum**: Share thoughts and tips about NoHo venues
 
 ## Tech Stack
 
-- **Frontend**: Next.js, React, Tailwind CSS
+- **Frontend**: Next.js 13+ (App Router), React, Tailwind CSS
 - **Backend**: Firebase (Authentication, Firestore, Storage)
 - **Mapping**: Google Maps API
 - **UI Components**: shadcn/ui
+- **Notifications**: react-hot-toast
 
 ## Getting Started
 
@@ -33,8 +42,8 @@ A real-time venue crowd monitoring app for North Hollywood, built with Next.js a
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/noho-live.git
-   cd noho-live
+   git clone https://github.com/yourusername/pulsenoho.git
+   cd pulsenoho
    ```
 
 2. Install dependencies:
@@ -69,28 +78,44 @@ A real-time venue crowd monitoring app for North Hollywood, built with Next.js a
 1. Create a new Firebase project at [firebase.google.com](https://firebase.google.com)
 2. Enable Authentication (Email/Password)
 3. Set up Firestore Database with the following collections:
-   - `users`
-   - `venues`
-   - `forum`
+   - `users` - User profiles and social connections
+   - `venues` - Venue information and metadata
+   - `messages` - Direct messaging between users
+   - `forum` - Community forum posts
 4. Set up Firebase Storage for user avatars
 5. Configure Firestore rules using the provided `firestore.rules` file
 
 ## Project Structure
 
 ```
-noho-live/
+pulsenoho/
 ├── public/           # Static assets
 ├── src/
 │   ├── app/          # Next.js app directory
-│   ├── components/   # React components
-│   ├── contexts/     # Context providers
+│   │   ├── admin/    # Admin dashboard 
+│   │   ├── dashboard/# User dashboard
+│   │   ├── profile/  # User profiles
+│   │   ├── messages/ # Direct messaging
+│   │   ├── venues/   # Venue details pages
+│   │   └── about/    # About page
+│   ├── components/   # Reusable React components
+│   ├── contexts/     # Context providers (Auth, etc.)
 │   ├── hooks/        # Custom hooks
 │   ├── lib/          # Utility functions and Firebase setup
-│   └── ui/           # UI components (shadcn/ui)
+│   └── components/ui/# UI components (shadcn/ui)
 ├── .env.local        # Environment variables (not tracked)
 ├── next.config.js    # Next.js config
 └── tailwind.config.js # Tailwind CSS config
 ```
+
+## Firestore Security Rules
+
+The application implements secure Firestore rules that:
+- Restrict venue editing to admin users
+- Allow users to follow/unfollow other users
+- Secure direct messaging between participants
+- Protect user data while enabling social features
+- Allow authenticated users to submit venue feedback
 
 ## Feature Roadmap
 
@@ -100,6 +125,9 @@ noho-live/
 - [ ] Push notifications for venue status changes
 - [ ] Dark/light theme toggle
 - [ ] Mobile app version
+- [ ] Favorite venues list
+- [ ] Venue recommendations based on preferences
+- [ ] Weekly venue trend reports
 
 ## License
 
@@ -107,10 +135,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Built by Ricky Segura
 - UI components powered by shadcn/ui
+- Icons by Lucide React
 - Mapping powered by Google Maps
 - Backend infrastructure by Firebase
+- Toast notifications by react-hot-toast
 
 ---
 
