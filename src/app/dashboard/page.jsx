@@ -248,67 +248,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-3 md:mt-6">
         <main className="flex-1">          
-          {/* Quick Actions */}
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
-                {/* Show these only on desktop since they're already in mobile bottom nav */}
-                <div className="hidden md:block w-full">
-                  <Link href="/venues" className="w-full">
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-white/5 hover:bg-white/10 border-white/10 text-white h-auto py-3"
-                    >
-                      <div className="flex flex-col items-center">
-                        <MapPin className="h-5 w-5 mb-1" />
-                        <span className="text-sm">Browse All Venues</span>
-                      </div>
-                    </Button>
-                  </Link>
-                </div>
-                <div className="hidden md:block w-full">
-                  <Link href="/forum" className="w-full">
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-white/5 hover:bg-white/10 border-white/10 text-white h-auto py-3"
-                    >
-                      <div className="flex flex-col items-center">
-                        <Users className="h-5 w-5 mb-1" />
-                        <span className="text-sm">Community Forum</span>
-                      </div>
-                    </Button>
-                  </Link>
-                </div>
-                
-                {/* Show these on both mobile and desktop */}
-                <Link href="/messages" className="w-full">
-                  <Button 
-                    variant="outline" 
-                    className="w-full bg-white/5 hover:bg-white/10 border-white/10 text-white h-auto py-3"
-                  >
-                    <div className="flex flex-col items-center">
-                      <ArrowRight className="h-5 w-5 mb-1" />
-                      <span className="text-sm">Messages</span>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/settings" className="w-full">
-                  <Button 
-                    variant="outline" 
-                    className="w-full bg-white/5 hover:bg-white/10 border-white/10 text-white h-auto py-3"
-                  >
-                    <div className="flex flex-col items-center">
-                      <User className="h-5 w-5 mb-1" />
-                      <span className="text-sm">Account Settings</span>
-                    </div>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          
         </main>
         
         <aside className="w-full md:w-80 flex flex-col gap-6">
@@ -383,7 +323,7 @@ export default function Dashboard() {
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">
-                More
+                Quick Actions
               </CardTitle>
             </CardHeader>
             <CardContent>
