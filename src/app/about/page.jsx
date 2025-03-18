@@ -81,7 +81,7 @@ export default function About() {
                             
                             <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
                                 <div className="w-32 h-32 bg-indigo-800 rounded-full flex items-center justify-center">
-                                    <span className="text-4xl font-bold text-white">JD</span>
+                                    <span className="text-4xl font-bold text-white">RS</span>
                                 </div>
                                 
                                 <div className="flex-1 space-y-4 text-gray-300">
@@ -96,14 +96,14 @@ export default function About() {
                                     <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                         <Button className="bg-indigo-600 hover:bg-indigo-700">
                                             <Github className="h-4 w-4 mr-2" />
-                                            <a href="https://github.com/yourusername" target="_blank" rel="noopener noreferrer">
+                                            <a href="https://github.com/rickysegura" target="_blank" rel="noopener noreferrer">
                                                 GitHub
                                             </a>
                                         </Button>
                                         
                                         <Button className="bg-white/10 hover:bg-white/20">
                                             <Mail className="h-4 w-4 mr-2" />
-                                            <a href="mailto:your.email@example.com">
+                                            <a href="mailto:rickysegura@pm.me">
                                                 Contact Me
                                             </a>
                                         </Button>
