@@ -323,15 +323,11 @@ export default function Dashboard() {
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">
-                Quick Actions
+                Navigation
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <AuthComponent />
-              
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <h3 className="text-sm font-medium text-white mb-3">Navigation</h3>
-                <div className="flex flex-col space-y-2">
+              <div className="flex flex-col space-y-2">
                   {/* On desktop, show all links */}
                   <div className="hidden md:block">
                     <Link href="/venues" className="text-gray-300 hover:text-white text-sm flex items-center">
@@ -361,7 +357,10 @@ export default function Dashboard() {
                       Admin Dashboard
                     </Link>
                   )}
-                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-white/10">
+                <AuthComponent />
               </div>
             </CardContent>
           </Card>
