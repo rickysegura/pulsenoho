@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import Footer from '../components/Footer';
-import { ArrowRight, MapPin, Clock, Star, Users, Shield } from 'lucide-react';
+import { ArrowRight, MapPin, Clock, Star, Users, Shield, Info } from 'lucide-react';
 import Image from 'next/image';
 
 export default function LandingPage() {
@@ -24,6 +24,14 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+      {/* Navigation */}
+      <nav className="absolute top-0 right-0 z-20 py-4 px-6">
+        <Link href="/about" className="text-gray-300 hover:text-white flex items-center">
+          <Info className="h-4 w-4 mr-1" />
+          <span>About</span>
+        </Link>
+      </nav>
+
       {/* Hero Section */}
       <section className="relative w-full px-4 py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 to-purple-900/80 z-0"></div>
@@ -146,15 +154,20 @@ export default function LandingPage() {
                 </div>
               </div>
               
-              {!currentUser && (
-                <div className="mt-8">
+              <div className="mt-8 flex gap-4">
+                {!currentUser && (
                   <Link href="/signup">
                     <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
                       Join Now
                     </Button>
                   </Link>
-                </div>
-              )}
+                )}
+                <Link href="/about">
+                  <Button className="text-white border-white hover:bg-white/10">
+                    Learn More
+                  </Button>
+                </Link>
+              </div>
             </div>
             
             <div className="md:w-1/2">
@@ -239,6 +252,11 @@ export default function LandingPage() {
                 </Link>
               </>
             )}
+          </div>
+          <div className="mt-4">
+            <Link href="/about" className="text-white/80 hover:text-white underline text-sm">
+              Learn more about PulseNoHo
+            </Link>
           </div>
         </div>
       </section>
