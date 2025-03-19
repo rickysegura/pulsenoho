@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, getDoc, updateDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, getDoc, updateDoc, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -16,7 +16,10 @@ import {
   Save, 
   MapPin, 
   ArrowLeft, 
-  Plus
+  Plus,
+  Check,
+  X,
+  MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { addSnapshot } from '../../lib/snapshotManager';
@@ -26,6 +29,8 @@ export default function AdminDashboard() {
   const { currentUser } = useAuth();
   const [venues, setVenues] = useState([]);
   const [users, setUsers] = useState([]);
+  const [chatRoomRequests, setChatRoomRequests] = useState([]);
+  const [approvedChatRooms, setApprovedChatRooms] = useState([]);
   const [newVenue, setNewVenue] = useState({ 
     name: '', 
     type: '', 
@@ -40,7 +45,7 @@ export default function AdminDashboard() {
   const [statsData, setStatsData] = useState({
     totalVenues: 0,
     totalUsers: 0,
-    totalVibes: 0
+    totalChatRooms: 0
   });
   const router = useRouter();
 
@@ -70,14 +75,14 @@ export default function AdminDashboard() {
     checkAdminStatus();
   }, [currentUser, router]);
 
-  // Load venues and users when admin status is confirmed
+  // Load data when admin status is confirmed
   useEffect(() => {
     if (!isAdmin) return;
 
     const loadData = async () => {
       try {
         // Subscribe to venues collection using the snapshot manager
-        const unsubscribeVenues = onSnapshot(collection(db, 'venues'), (snapshot) => {
+        addSnapshot(onSnapshot(collection(db, 'venues'), (snapshot) => {
           const venueData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setVenues(venueData);
           
@@ -88,13 +93,10 @@ export default function AdminDashboard() {
           }));
           
           setLoading(false);
-        });
-        
-        // Register with snapshot manager
-        addSnapshot(unsubscribeVenues);
+        }));
 
         // Load users with the snapshot manager
-        const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        addSnapshot(onSnapshot(collection(db, 'users'), (snapshot) => {
           const userData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setUsers(userData);
           
@@ -103,12 +105,60 @@ export default function AdminDashboard() {
             ...prev,
             totalUsers: snapshot.docs.length
           }));
-        });
+        }));
         
-        // Register with snapshot manager
-        addSnapshot(unsubscribeUsers);
+        // Load pending chat room requests
+        const pendingRoomsQuery = query(
+          collection(db, 'chatRooms'),
+          where('approved', '==', false),
+          orderBy('createdAt', 'desc')
+        );
+        
+        addSnapshot(onSnapshot(pendingRoomsQuery, async (snapshot) => {
+          const requestData = await Promise.all(
+            snapshot.docs.map(async (roomDoc) => {
+              const data = roomDoc.data();
+              let creatorName = 'Unknown User';
+              
+              try {
+                const userRef = doc(db, 'users', data.creatorId);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                  creatorName = userSnap.data().username || userSnap.data().displayName || creatorName;
+                }
+              } catch (err) {
+                console.error('Error fetching creator data:', err);
+              }
+              
+              return {
+                id: roomDoc.id,
+                ...data,
+                creatorName
+              };
+            })
+          );
+          
+          setChatRoomRequests(requestData);
+        }));
+        
+        // Load approved chat rooms
+        const approvedRoomsQuery = query(
+          collection(db, 'chatRooms'),
+          where('approved', '==', true),
+          orderBy('createdAt', 'desc')
+        );
+        
+        addSnapshot(onSnapshot(approvedRoomsQuery, (snapshot) => {
+          const roomsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setApprovedChatRooms(roomsData);
+          
+          // Update chat rooms count
+          setStatsData(prev => ({
+            ...prev,
+            totalChatRooms: roomsData.length
+          }));
+        }));
 
-        // No need for explicit cleanup as the snapshot manager handles this
       } catch (error) {
         console.error('Error loading data:', error);
         setLoading(false);
@@ -206,6 +256,48 @@ export default function AdminDashboard() {
   const handleCancelEdit = () => {
     setEditingVenue(null);
   };
+  
+  const handleApproveChatRoom = async (roomId, roomTitle) => {
+    try {
+      const roomRef = doc(db, 'chatRooms', roomId);
+      await updateDoc(roomRef, {
+        approved: true
+      });
+      
+      toast.success(`Chat room "${roomTitle}" has been approved.`);
+    } catch (error) {
+      console.error('Error approving chat room:', error);
+      toast.error("Failed to approve chat room. Please try again.");
+    }
+  };
+  
+  const handleRejectChatRoom = async (roomId, roomTitle) => {
+    if (!confirm('Are you sure you want to reject this chat room request? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'chatRooms', roomId));
+      toast.success(`Chat room request "${roomTitle}" has been rejected.`);
+    } catch (error) {
+      console.error('Error rejecting chat room:', error);
+      toast.error("Failed to reject chat room request. Please try again.");
+    }
+  };
+  
+  const handleDeleteChatRoom = async (roomId, roomTitle) => {
+    if (!confirm('Are you sure you want to delete this chat room? All messages will be permanently lost.')) {
+      return;
+    }
+    
+    try {
+      await deleteDoc(doc(db, 'chatRooms', roomId));
+      toast.success(`Chat room "${roomTitle}" has been deleted.`);
+    } catch (error) {
+      console.error('Error deleting chat room:', error);
+      toast.error("Failed to delete chat room. Please try again.");
+    }
+  };
 
   if (loading) {
     return (
@@ -259,7 +351,7 @@ export default function AdminDashboard() {
         </div>
         
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardContent className="p-6">
               <div className="text-4xl font-bold text-white">{statsData.totalVenues}</div>
@@ -280,12 +372,20 @@ export default function AdminDashboard() {
               <p className="text-gray-400">Admin Users</p>
             </CardContent>
           </Card>
+          
+          <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+            <CardContent className="p-6">
+              <div className="text-4xl font-bold text-white">{statsData.totalChatRooms}</div>
+              <p className="text-gray-400">Chat Rooms</p>
+            </CardContent>
+          </Card>
         </div>
         
         {/* Main Content */}
         <Tabs defaultValue="venues" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-white/5 mb-6">
             <TabsTrigger value="venues" className="data-[state=active]:bg-indigo-600">Venues</TabsTrigger>
+            <TabsTrigger value="chatrooms" className="data-[state=active]:bg-indigo-600">Chat Rooms</TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-indigo-600">Users</TabsTrigger>
           </TabsList>
           
@@ -497,6 +597,131 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          {/* Chat Rooms Tab */}
+          <TabsContent value="chatrooms">
+            <div className="space-y-6">
+              {/* Pending Chat Room Requests */}
+              <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xl font-semibold text-white">
+                      Pending Chat Room Requests
+                    </CardTitle>
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-400">
+                      {chatRoomRequests.length} pending
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {chatRoomRequests.length === 0 ? (
+                    <p className="text-center text-gray-400 py-6">No pending chat room requests.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {chatRoomRequests.map((room) => (
+                        <div
+                          key={room.id}
+                          className="bg-white/5 p-4 rounded-lg border border-white/10"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold text-white text-lg">{room.title}</h3>
+                              <p className="text-gray-400 text-sm">
+                                Requested by: {room.creatorName} • {room.createdAt?.toDate().toLocaleString() || 'Recently'}
+                              </p>
+                              <p className="text-gray-300 mt-2">
+                                {room.description || 'No description provided'}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleApproveChatRoom(room.id, room.title)}
+                                className="border-green-500 text-green-400 hover:bg-green-500/20"
+                              >
+                                <Check className="h-4 w-4 mr-1" /> Approve
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRejectChatRoom(room.id, room.title)}
+                                className="border-red-500 text-red-400 hover:bg-red-500/20"
+                              >
+                                <X className="h-4 w-4 mr-1" /> Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Approved Chat Rooms */}
+              <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xl font-semibold text-white">
+                      Active Chat Rooms
+                    </CardTitle>
+                    <Badge variant="outline" className="border-indigo-500 text-indigo-400">
+                      {approvedChatRooms.length} active
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {approvedChatRooms.length === 0 ? (
+                    <p className="text-center text-gray-400 py-6">No active chat rooms.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {approvedChatRooms.map((room) => (
+                        <div
+                          key={room.id}
+                          className="bg-white/5 p-4 rounded-lg border border-white/10"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center">
+                                <h3 className="font-semibold text-white text-lg">{room.title}</h3>
+                                <Badge className="ml-2 bg-green-600 text-white">Active</Badge>
+                              </div>
+                              <p className="text-gray-400 text-sm">
+                                Created: {room.createdAt?.toDate().toLocaleString() || 'Recently'}
+                              </p>
+                              <p className="text-gray-300 mt-2">
+                                {room.description || 'No description provided'}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Link href={`/forum?room=${room.id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-indigo-500 text-indigo-400 hover:bg-indigo-500/20"
+                                >
+                                  <MessageSquare className="h-4 w-4 mr-1" /> View
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteChatRoom(room.id, room.title)}
+                                className="border-red-500 text-red-400 hover:bg-red-500/20"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" /> Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
           
           {/* Users Tab */}
