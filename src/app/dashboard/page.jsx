@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { MapContext } from '../ClientLayout';
 import { MapPin, List, User, Users, ArrowRight, Shield } from 'lucide-react';
 import { addSnapshot } from '../../lib/snapshotManager';
+import SocialFeed from '../../components/SocialFeed';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -234,7 +235,7 @@ export default function Dashboard() {
             </div>
         </div>
         ) : (
-          <div className="w-full h-96 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center">
+          <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center">
             <div className="text-center">
               <div className="animate-pulse">
                 <h2 className="text-xl font-semibold text-white/80">Loading map...</h2>
@@ -246,9 +247,10 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-3 md:mt-6">
-        <main className="flex-1">          
-          
+      <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-6 mb-20 md:mb-6">
+        <main className="flex-1">
+          {/* Social Feed Component */}
+          <SocialFeed />
         </main>
         
         <aside className="w-full md:w-80 flex flex-col gap-6">
@@ -404,9 +406,6 @@ export default function Dashboard() {
       <div className="hidden md:block">
         <Footer />
       </div>
-      
-      {/* Add padding to account for fixed bottom navigation */}
-      <div className="md:hidden h-16"></div>
     </div>
   );
 }
