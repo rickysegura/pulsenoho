@@ -532,10 +532,10 @@ export default function Heatmap({ isLoaded }) {
               )}
               
               {currentUser ? (
-                <Link href="/venues" className="block">
+                <Link href={`/venues/${selectedVenue.id}`} className="block">
                   <Button 
                     size="sm" 
-                    className="w-full mt-2 text-xs"
+                    className="w-full mt-2 text-xs bg-indigo-600 hover:bg-indigo-700"
                   >
                     View Full Details
                   </Button>
@@ -544,7 +544,7 @@ export default function Heatmap({ isLoaded }) {
                 <Link href="/login" className="block">
                   <Button 
                     size="sm" 
-                    className="w-full mt-2 text-xs"
+                    className="w-full mt-2 text-xs bg-indigo-600 hover:bg-indigo-700"
                   >
                     Log In to See Details
                   </Button>
