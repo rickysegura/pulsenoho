@@ -1,8 +1,8 @@
 // src/app/forum/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, getDoc, limit, where } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, getDoc, limit, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
@@ -13,7 +13,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { addSnapshot } from '../../lib/snapshotManager';
-import { Plus, Home, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Plus, Home, MessageSquare, ArrowLeft, Users, MessageCircle } from 'lucide-react';
 
 export default function Forum() {
   const { currentUser } = useAuth();
@@ -24,6 +24,8 @@ export default function Forum() {
   const [showNewRoomModal, setShowNewRoomModal] = useState(false);
   const [newRoom, setNewRoom] = useState({ title: '', description: '' });
   const [activeChatRoom, setActiveChatRoom] = useState(null);
+  const [roomStats, setRoomStats] = useState({});
+  const messagesEndRef = useRef(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,7 +45,7 @@ export default function Forum() {
       // We'll sort the rooms client-side instead
     );
     
-    addSnapshot(onSnapshot(chatRoomsQuery, (snapshot) => {
+    addSnapshot(onSnapshot(chatRoomsQuery, async (snapshot) => {
       const roomData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -57,6 +59,45 @@ export default function Forum() {
       });
       
       setChatRooms(roomData);
+      
+      // Get message counts and active user counts for each room
+      const statsPromises = roomData.map(async (room) => {
+        // Get message count
+        const messagesRef = collection(db, 'chatRooms', room.id, 'messages');
+        const messagesSnapshot = await getCountFromServer(messagesRef);
+        const messageCount = messagesSnapshot.data().count;
+        
+        // Get unique user count - get all messages and extract unique userIds
+        const messagesQuery = query(messagesRef, limit(100)); // Limit to avoid too large queries
+        const messagesQuerySnapshot = await getDocs(messagesQuery);
+        const uniqueUserIds = new Set();
+        
+        messagesQuerySnapshot.forEach(doc => {
+          const userId = doc.data().userId;
+          if (userId) {
+            uniqueUserIds.add(userId);
+          }
+        });
+        
+        return {
+          roomId: room.id,
+          messageCount,
+          userCount: uniqueUserIds.size
+        };
+      });
+      
+      const allStats = await Promise.all(statsPromises);
+      
+      // Convert array of stats to an object indexed by roomId
+      const statsObject = allStats.reduce((acc, stat) => {
+        acc[stat.roomId] = {
+          messageCount: stat.messageCount,
+          userCount: stat.userCount
+        };
+        return acc;
+      }, {});
+      
+      setRoomStats(statsObject);
       setLoading(false);
     }));
     
@@ -80,8 +121,8 @@ export default function Forum() {
     
     const q = query(
       collection(db, 'chatRooms', activeChatRoom.id, 'messages'),
-      orderBy('timestamp', 'desc'),
-      limit(30)
+      orderBy('timestamp', 'asc'),
+      limit(50)
     );
     
     const unsubscribe = addSnapshot(onSnapshot(q, async (snapshot) => {
@@ -106,17 +147,30 @@ export default function Forum() {
               photoURL,
               text: data.text,
               timestamp: data.timestamp,
-              formattedTime: data.timestamp?.toDate().toLocaleTimeString() || 'Sending...'
+              formattedTime: data.timestamp?.toDate().toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }) || 'Sending...'
             };
           })
         );
         
         setMessages(messageData);
+        
+        // Scroll to bottom on new messages
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } catch (error) {
         console.error('Error processing messages:', error);
       }
     }));
   }, [activeChatRoom]);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
   
   const fetchChatRoom = async (roomId) => {
     try {
@@ -187,8 +241,8 @@ export default function Forum() {
     }
   };
   
-  const handleRoomSelect = (room) => {
-    router.push(`/forum?room=${room.id}`);
+  const handleRoomSelect = (roomId) => {
+    router.push(`/forum?room=${roomId}`);
   };
   
   // Add this function to clear the active room
@@ -297,51 +351,69 @@ export default function Forum() {
           {activeChatRoom ? (
             // Chat room view
             <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <p className="text-center text-gray-400 my-8">No messages yet. Start the conversation!</p>
-                ) : (
-                  messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        msg.userId === currentUser.uid
-                          ? 'bg-white/20 ml-auto max-w-[70%]'
-                          : 'bg-gray-800 mr-auto max-w-[70%]'
-                      } transition-all hover:bg-opacity-90`}
-                    >
-                      {msg.photoURL ? (
-                        <Image
-                          src={msg.photoURL}
-                          alt={`${msg.username}'s avatar`}
-                          width={40}
-                          height={40}
-                          className="rounded-full border-2 border-white/20"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/20">
-                          <span className="text-white font-semibold">{msg.username.charAt(0).toUpperCase()}</span>
+              <div className="flex-1 overflow-y-auto flex flex-col-reverse p-4">
+                <div className="space-y-3">
+                  {messages.length === 0 ? (
+                    <p className="text-center text-gray-400 my-8">No messages yet. Start the conversation!</p>
+                  ) : (
+                    <>
+                      {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className="group relative"
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Avatar Section */}
+                          {msg.photoURL ? (
+                            <Image
+                              src={msg.photoURL}
+                              alt={`${msg.username}'s avatar`}
+                              width={32}
+                              height={32}
+                              className="rounded-md border border-white/20"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-md bg-indigo-800 flex items-center justify-center border border-indigo-700">
+                              <span className="text-white text-xs font-semibold">{msg.username.charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          
+                          {/* Message Content */}
+                          <div className={`flex-1 ${
+                            msg.userId === currentUser.uid ? 'bg-indigo-900/40' : 'bg-gray-800/60'
+                          } p-3 rounded-md border-l-4 ${
+                            msg.userId === currentUser.uid ? 'border-indigo-500' : 'border-gray-600'
+                          }`}>
+                            <div className="flex justify-between items-baseline mb-1">
+                              <Link href={`/profile/${msg.userId}`} className="font-semibold text-white hover:underline">
+                                {msg.username}
+                              </Link>
+                              <span className="text-gray-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                {msg.formattedTime}
+                              </span>
+                            </div>
+                            <p className="text-white break-words">{msg.text}</p>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-gray-300 text-sm">
-                          <Link href={`/profile/${msg.userId}`} className="font-semibold text-white hover:underline">
-                            {msg.username}
-                          </Link>{' '}
-                          <span className="text-gray-400 text-xs">
-                            at {msg.formattedTime}
-                          </span>
-                        </p>
-                        <p className="text-white break-words">{msg.text}</p>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))}
+                      {/* Date separator for forum - can be enhanced to show actual date groups */}
+                      <div className="relative py-2">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-white/10"></div>
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-gray-900 px-4 text-xs text-gray-400">Chat Room Messages</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               
               <form
                 onSubmit={handleSendMessage}
-                className="sticky bottom-0 bg-gradient-to-t from-gray-900/80 to-transparent p-4 border-t border-white/20"
+                className="sticky bottom-0 bg-gray-800/95 p-4 border-t border-white/20"
               >
                 <div className="flex gap-2">
                   <Input
@@ -390,21 +462,34 @@ export default function Forum() {
                   {chatRooms.map((room) => (
                     <Card 
                       key={room.id} 
-                      className="bg-white/5 border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
-                      onClick={() => handleRoomSelect(room)}
+                      className="bg-white/5 border-white/10 transition-colors"
                     >
                       <CardHeader className="pb-2">
                         <CardTitle className="text-lg">{room.title}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-gray-300 text-sm line-clamp-2 mb-4">
+                        <p className="text-gray-300 text-sm line-clamp-2 mb-2">
                           {room.description || 'No description provided'}
                         </p>
-                        <div className="flex justify-between items-center text-xs text-gray-400">
-                          <span>Created: {room.createdAt?.toDate().toLocaleDateString() || 'Recently'}</span>
+                        <div className="flex space-x-4 text-sm text-gray-400 mb-3">
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-1 text-indigo-400" />
+                            <span>{roomStats[room.id]?.userCount || 0} Users</span>
+                          </div>
+                          <div className="flex items-center">
+                            <MessageCircle className="h-4 w-4 mr-1 text-indigo-400" />
+                            <span>{roomStats[room.id]?.messageCount || 0} Messages</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-400">Created: {room.createdAt?.toDate().toLocaleDateString() || 'Recently'}</span>
                           <Button 
                             size="sm" 
                             className="text-white bg-indigo-600 hover:bg-indigo-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRoomSelect(room.id);
+                            }}
                           >
                             Join Chat
                           </Button>
