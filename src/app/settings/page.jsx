@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { UserCircle, Camera, ArrowLeft } from 'lucide-react';
+import ProfileImageUploader from '../../components/ProfileImageUploader';
 
 export default function Settings() {
   const { currentUser, logout } = useAuth();
@@ -79,18 +80,9 @@ export default function Settings() {
     photoInputRef.current?.click();
   };
 
-  const handlePhotoChange = (e) => {
-    if (e.target.files[0]) {
-      const file = e.target.files[0];
-      setPhoto(file);
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPhotoPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handlePhotoUploadComplete = (photoURL) => {
+    setPhotoPreview(photoURL);
+    toast.success('Profile photo updated!');
   };
 
   const handleSaveProfile = async (e) => {
@@ -268,26 +260,11 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div 
-                  className="relative w-24 h-24 rounded-full bg-white/20 flex items-center justify-center overflow-hidden cursor-pointer group"
-                  onClick={handlePhotoClick}
-                >
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Profile preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <UserCircle className="w-16 h-16 text-white/70" />
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Camera className="w-6 h-6 text-white" />
-                  </div>
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    className="hidden"
-                  />
-                </div>
+                <ProfileImageUploader 
+                    userId={currentUser.uid}
+                    onUploadComplete={handlePhotoUploadComplete}
+                    existingPhotoURL={photoPreview}
+                />
                 
                 <div className="flex-1 w-full">
                   <label className="text-gray-300 text-sm block mb-1">Username</label>

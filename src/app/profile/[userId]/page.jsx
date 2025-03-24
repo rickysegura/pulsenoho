@@ -12,6 +12,7 @@ import { toast } from 'react-hot-toast';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageSquare, User, Star, MapPin, Users, ArrowLeft, Calendar, Check } from 'lucide-react';
+import UserAvatar from '../../../components/UserAvatar';
 
 export default function UserProfile() {
   const { currentUser } = useAuth();
@@ -235,21 +236,11 @@ export default function UserProfile() {
           <CardContent className="pt-4 space-y-6">
             <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
               <div className="flex flex-col items-center">
-                {profile.photoURL ? (
-                  <Image
-                    src={profile.photoURL}
-                    alt={`${profile.username}'s avatar`}
-                    width={100}
-                    height={100}
-                    className="rounded-full border-2 border-white/20"
-                  />
-                ) : (
-                  <div className="w-24 h-24 bg-indigo-800 rounded-full flex items-center justify-center border-2 border-white/20">
-                    <span className="text-3xl font-bold text-white">
-                      {profile.username.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <UserAvatar 
+                      user={profile} 
+                      size="xl" 
+                      className="border-2 border-white/20"
+                />
                 
                 <div className="flex items-center mt-2 text-sm text-gray-400">
                   <Calendar className="h-3 w-3 mr-1" />
