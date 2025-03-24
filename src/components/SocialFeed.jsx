@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, serverTimestamp, where, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, serverTimestamp, where, deleteDoc, getDocs, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
@@ -12,10 +12,10 @@ import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { toast } from 'react-hot-toast';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, MessageCircle, Send, Clock, User, UserPlus, Trash2, X } from 'lucide-react';
 import { addSnapshot } from '../lib/snapshotManager';
+import UserAvatar from './UserAvatar';
 
 export default function SocialFeed() {
   const { currentUser } = useAuth();
@@ -217,31 +217,29 @@ export default function SocialFeed() {
     try {
       const postRef = doc(db, 'posts', postId);
       
-      if (isLiked) {
-        // Unlike post
-        await updateDoc(postRef, {
-          likes: arrayRemove(currentUser.uid),
-          likeCount: posts.find(p => p.id === postId).likeCount - 1
-        });
-      } else {
-        // Like post
-        await updateDoc(postRef, {
-          likes: arrayUnion(currentUser.uid),
-          likeCount: posts.find(p => p.id === postId).likeCount + 1
-        });
-        
-        // Get post creator's user ID
-        const postDoc = await getDoc(postRef);
-        if (postDoc.exists() && postDoc.data().userId !== currentUser.uid) {
-          // Add a point to the post creator
-          const creatorRef = doc(db, 'users', postDoc.data().userId);
-          const creatorSnap = await getDoc(creatorRef);
-          if (creatorSnap.exists()) {
-            await updateDoc(creatorRef, {
-              points: (creatorSnap.data().points || 0) + 1
-            });
-          }
+      console.log(`Attempting to ${isLiked ? 'unlike' : 'like'} post ${postId}`);
+      
+      // First operation: Update likes and likeCount
+      try {
+        if (isLiked) {
+          // Unlike - Remove current user from likes array
+          await updateDoc(postRef, {
+            likes: arrayRemove(currentUser.uid),
+            likeCount: increment(-1) // Decrement the like count by 1
+          });
+          console.log('Unlike operation succeeded');
+        } else {
+          // Like - Add current user to likes array
+          await updateDoc(postRef, {
+            likes: arrayUnion(currentUser.uid),
+            likeCount: increment(1) // Increment the like count by 1
+          });
+          console.log('Like operation succeeded');
         }
+      } catch (error) {
+        console.error('Error in like/unlike operation:', error);
+        toast.error('Failed to update like status');
+        return; // Exit early if the primary operation fails
       }
       
       // Update local state to reflect like/unlike
@@ -257,8 +255,32 @@ export default function SocialFeed() {
           return post;
         })
       );
+      
+      // Second operation: Add point to post creator (only if liking, not unliking)
+      // Only attempt this if the first operation succeeded
+      if (!isLiked) {
+        try {
+          // Get post creator info to add points
+          const postSnap = await getDoc(postRef);
+          if (postSnap.exists() && postSnap.data().userId !== currentUser.uid) {
+            const creatorRef = doc(db, 'users', postSnap.data().userId);
+            console.log(`Attempting to update points for user ${postSnap.data().userId}`);
+            
+            const creatorSnap = await getDoc(creatorRef);
+            if (creatorSnap.exists()) {
+              await updateDoc(creatorRef, {
+                points: increment(1) // Use increment here too for atomic operation
+              });
+              console.log('Creator points update succeeded');
+            }
+          }
+        } catch (pointsError) {
+          console.error('Error updating creator points (but like was successful):', pointsError);
+          // Don't show toast error for this - the like itself was successful
+        }
+      }
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('General error in handleLikeToggle:', error);
       toast.error('Failed to update like');
     }
   };
@@ -506,21 +528,13 @@ export default function SocialFeed() {
                     {/* Post Header with User Info */}
                     <div className="flex justify-between items-start mb-2">
                       <Link href={`/profile/${post.userId}`} className="flex items-center gap-2">
-                        {userDetails[post.userId]?.photoURL ? (
-                          <Image
-                            src={userDetails[post.userId]?.photoURL}
-                            alt={post.username}
-                            width={40}
-                            height={40}
-                            className="rounded-full border border-white/20"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-indigo-700 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-semibold text-white">
-                              {post.username?.charAt(0).toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        )}
+                        <UserAvatar 
+                          user={{
+                            username: post.username,
+                            photoURL: userDetails[post.userId]?.photoURL
+                          }}
+                          size="md"
+                        />
                         
                         <div>
                           <p className="font-medium text-white">{post.username}</p>
@@ -636,21 +650,14 @@ export default function SocialFeed() {
                         <h4 className="text-sm font-medium text-gray-300">Comments</h4>
                         {post.comments.map((comment) => (
                           <div key={comment.id} className="flex space-x-2">
-                            {userDetails[comment.userId]?.photoURL ? (
-                              <Image
-                                src={userDetails[comment.userId]?.photoURL}
-                                alt={comment.username}
-                                width={24}
-                                height={24}
-                                className="rounded-full border border-white/20"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 bg-indigo-700 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-semibold text-white">
-                                  {comment.username?.charAt(0).toUpperCase() || 'U'}
-                                </span>
-                              </div>
-                            )}
+                            <UserAvatar 
+                              user={{
+                                username: comment.username,
+                                photoURL: userDetails[comment.userId]?.photoURL
+                              }}
+                              size="sm"
+                              className="flex-shrink-0"
+                            />
                             <div className="flex-1 bg-white/5 p-2 rounded-md">
                               <div className="flex justify-between items-center">
                                 <Link href={`/profile/${comment.userId}`} className="text-sm font-medium text-white hover:underline">
