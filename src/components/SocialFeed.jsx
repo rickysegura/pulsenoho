@@ -289,6 +289,8 @@ export default function SocialFeed() {
     if (!commentText.trim()) return;
     
     try {
+      console.log(`Attempting to add comment to post ${postId}`);
+      
       // Get user data to include username
       const userRef = doc(db, 'users', currentUser.uid);
       const userSnap = await getDoc(userRef);
@@ -301,33 +303,53 @@ export default function SocialFeed() {
         timestamp: serverTimestamp()
       };
       
-      // Add comment to the post
-      await addDoc(collection(db, `posts/${postId}/comments`), comment);
-      
-      // Update comment count on the post
-      const postRef = doc(db, 'posts', postId);
-      const postSnap = await getDoc(postRef);
-      if (postSnap.exists()) {
-        await updateDoc(postRef, {
-          commentCount: (postSnap.data().commentCount || 0) + 1
-        });
-        
-        // If commenting on someone else's post, add a point to the post creator
-        if (postSnap.data().userId !== currentUser.uid) {
-          const creatorRef = doc(db, 'users', postSnap.data().userId);
-          const creatorSnap = await getDoc(creatorRef);
-          if (creatorSnap.exists()) {
-            await updateDoc(creatorRef, {
-              points: (creatorSnap.data().points || 0) + 1
-            });
-          }
-        }
+      // First operation: Add comment to the post
+      try {
+        await addDoc(collection(db, `posts/${postId}/comments`), comment);
+        console.log('Comment added successfully');
+      } catch (error) {
+        console.error('Error adding comment:', error);
+        toast.error('Failed to add comment');
+        return; // Exit early if the primary operation fails
       }
       
-      // Add a point to the commenter
-      await updateDoc(userRef, {
-        points: (userSnap.data().points || 0) + 1
-      });
+      // Second operation: Update comment count on the post
+      try {
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, {
+          commentCount: increment(1) // Use increment for atomic operation
+        });
+        console.log('Post comment count updated successfully');
+        
+        // Third operation: If commenting on someone else's post, add a point to the post creator
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists() && postSnap.data().userId !== currentUser.uid) {
+          const creatorRef = doc(db, 'users', postSnap.data().userId);
+          try {
+            await updateDoc(creatorRef, {
+              points: increment(1) // Use increment here too for atomic operation
+            });
+            console.log('Creator points updated successfully');
+          } catch (pointsError) {
+            console.error('Error updating creator points (but comment was successful):', pointsError);
+            // Don't show toast error for this - the comment itself was successful
+          }
+        }
+      } catch (updateError) {
+        console.error('Error updating comment count (but comment was added):', updateError);
+        // Don't exit or show toast error - the comment was added successfully
+      }
+      
+      // Fourth operation: Add a point to the commenter
+      try {
+        await updateDoc(userRef, {
+          points: increment(1) // Use increment here too for atomic operation
+        });
+        console.log('Commenter points updated successfully');
+      } catch (pointsError) {
+        console.error('Error updating commenter points (but comment was successful):', pointsError);
+        // Don't show toast error for this - the comment itself was successful
+      }
       
       setCommentText('');
       setActiveCommentPostId(null);
@@ -353,7 +375,7 @@ export default function SocialFeed() {
         })
       );
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('General error in handleCommentSubmit:', error);
       toast.error('Failed to add comment');
     }
   };
