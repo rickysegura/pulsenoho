@@ -343,6 +343,13 @@ export default function Dashboard() {
                       Community Forum
                     </Link>
                   </div>
+
+                  <div className="hidden md:block">
+                    <Link href="/discover" className="text-gray-300 hover:text-white text-sm flex items-center">
+                      <Users className="h-4 w-4 mr-2 text-indigo-400" />
+                        Discover Users
+                    </Link>
+                  </div>
                   
                   {/* Show on both mobile and desktop */}
                   <Link href="/messages" className="text-gray-300 hover:text-white text-sm flex items-center">
