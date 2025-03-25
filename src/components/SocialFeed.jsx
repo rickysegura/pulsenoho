@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc, serverTimestamp, where, deleteDoc, getDocs, increment } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Button } from './ui/button';
@@ -12,8 +13,9 @@ import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { toast } from 'react-hot-toast';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MessageCircle, Send, Clock, User, UserPlus, Trash2, X } from 'lucide-react';
+import { Heart, MessageCircle, Send, Clock, User, UserPlus, Trash2, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { addSnapshot } from '../lib/snapshotManager';
 import UserAvatar from './UserAvatar';
 
@@ -28,6 +30,10 @@ export default function SocialFeed() {
   const [userDetails, setUserDetails] = useState({});
   const [viewMode, setViewMode] = useState('all'); // 'all', 'following', 'popular'
   const [expandedPost, setExpandedPost] = useState(null);
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
   
   // Load posts
   useEffect(() => {
@@ -174,10 +180,49 @@ export default function SocialFeed() {
       console.error('Error fetching user details:', error);
     }
   };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (3MB max)
+    const maxSize = 3 * 1024 * 1024; // 3MB in bytes
+    if (file.size > maxSize) {
+      toast.error('Image must be smaller than 3MB');
+      return;
+    }
+
+    setImage(file);
+
+    // Create a preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   
   const handlePostSubmit = async (e) => {
     e.preventDefault();
-    if (!newPost.trim() || posting) return;
+    if ((!newPost.trim() && !image) || posting) return;
     
     setPosting(true);
     
@@ -187,23 +232,61 @@ export default function SocialFeed() {
       const userSnap = await getDoc(userRef);
       const username = userSnap.exists() ? userSnap.data().username || 'Anonymous' : 'Anonymous';
       
-      // Add post document
-      await addDoc(collection(db, 'posts'), {
+      // Create post data
+      const postData = {
         text: newPost.trim(),
         userId: currentUser.uid,
         username,
         timestamp: serverTimestamp(),
         likes: [],
         likeCount: 0,
-        commentCount: 0
-      });
+        commentCount: 0,
+        hasImage: false,
+        imageURL: ''
+      };
+      
+      // Upload image if one is selected
+      if (image) {
+        setUploadingImage(true);
+        try {
+          // Create a unique path for the image
+          const imagePath = `posts/${currentUser.uid}_${new Date().getTime()}`;
+          const storageRef = ref(storage, imagePath);
+          
+          // Upload the file
+          await uploadBytes(storageRef, image);
+          
+          // Get download URL
+          const downloadURL = await getDownloadURL(storageRef);
+          
+          // Update post data with image info
+          postData.hasImage = true;
+          postData.imageURL = downloadURL;
+          
+          console.log('Image uploaded successfully:', downloadURL);
+        } catch (imageError) {
+          console.error('Error uploading image:', imageError);
+          toast.error('Failed to upload image, but will post text content');
+          // Continue with submission even if image upload fails
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+      
+      // Add post document
+      await addDoc(collection(db, 'posts'), postData);
       
       // Update user points
       await updateDoc(userRef, {
-        points: (userSnap.data().points || 0) + 2
+        points: increment(2)
       });
       
       setNewPost('');
+      setImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       toast.success('Post shared! +2 points');
     } catch (error) {
       console.error('Error creating post:', error);
@@ -304,8 +387,9 @@ export default function SocialFeed() {
       };
       
       // First operation: Add comment to the post
+      let commentRef;
       try {
-        await addDoc(collection(db, `posts/${postId}/comments`), comment);
+        commentRef = await addDoc(collection(db, `posts/${postId}/comments`), comment);
         console.log('Comment added successfully');
       } catch (error) {
         console.error('Error adding comment:', error);
@@ -355,25 +439,8 @@ export default function SocialFeed() {
       setActiveCommentPostId(null);
       toast.success('Comment added! +1 point');
       
-      // Update local state to reflect the new comment
-      setPosts(prevPosts => 
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            const formattedTime = new Date().toLocaleString();
-            const newComment = {
-              id: 'temp-' + Date.now(), // temporary ID until next refresh
-              ...comment,
-              formattedTime
-            };
-            return { 
-              ...post, 
-              comments: [...post.comments, newComment],
-              commentCount: (post.commentCount || 0) + 1
-            };
-          }
-          return post;
-        })
-      );
+      // We'll let the Firestore listener update the UI instead of manually updating state
+      // This prevents duplicate comments from appearing
     } catch (error) {
       console.error('General error in handleCommentSubmit:', error);
       toast.error('Failed to add comment');
@@ -465,13 +532,57 @@ export default function SocialFeed() {
                 className="bg-white/10 border-white/20 text-white resize-none"
                 rows={3}
               />
+
+              {/* Hidden file input */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              
+              {/* Image Preview or Upload Button */}
+              {imagePreview ? (
+                <div className="relative mb-2">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="w-full h-auto rounded-md border border-gray-700 max-h-40 object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 bg-gray-900/80 text-white p-1 rounded-full hover:bg-red-700/80"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleImageClick}
+                  className="flex items-center gap-2 text-gray-400 hover:text-gray-300"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  <span>Add Image</span>
+                </button>
+              )}
+              
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
                   className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  disabled={!newPost.trim() || posting}
+                  disabled={(!newPost.trim() && !image) || posting || uploadingImage}
                 >
-                  {posting ? 'Posting...' : 'Share Update'}
+                  {posting || uploadingImage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {uploadingImage ? 'Uploading...' : 'Posting...'}
+                    </>
+                  ) : (
+                    'Share Update'
+                  )}
                 </Button>
               </div>
             </form>
@@ -602,19 +713,32 @@ export default function SocialFeed() {
                     
                     {/* Post Content */}
                     <div className="mb-3">
-                      <p className="text-gray-200 whitespace-pre-wrap">
-                        {expandedPost === post.id || post.text.length <= 250 
-                          ? post.text 
-                          : `${post.text.substring(0, 250)}...`}
-                      </p>
+                      {post.text && (
+                        <p className="text-gray-200 whitespace-pre-wrap">
+                          {expandedPost === post.id || post.text.length <= 250 
+                            ? post.text 
+                            : `${post.text.substring(0, 250)}...`}
+                        </p>
+                      )}
                       
-                      {post.text.length > 250 && (
+                      {post.text && post.text.length > 250 && (
                         <button 
                           onClick={() => toggleExpandPost(post.id)}
                           className="text-indigo-400 hover:text-indigo-300 text-sm mt-1"
                         >
                           {expandedPost === post.id ? 'Show less' : 'Read more'}
                         </button>
+                      )}
+                      
+                      {/* Post Image */}
+                      {post.hasImage && post.imageURL && (
+                        <div className="mt-3">
+                          <img 
+                            src={post.imageURL} 
+                            alt="Post image" 
+                            className="w-full h-auto rounded-md border border-white/10 max-h-80 object-contain"
+                          />
+                        </div>
                       )}
                     </div>
                     
