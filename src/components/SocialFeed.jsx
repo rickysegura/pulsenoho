@@ -34,6 +34,7 @@ export default function SocialFeed() {
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
+  const isProcessingLike = useRef(null);
   
   // Load posts
   useEffect(() => {
@@ -297,6 +298,10 @@ export default function SocialFeed() {
   };
   
   const handleLikeToggle = async (postId, isLiked) => {
+    // Prevent duplicate clicks by checking a ref
+    if (isProcessingLike.current) return;
+    isProcessingLike.current = postId;
+    
     try {
       const postRef = doc(db, 'posts', postId);
       
@@ -304,6 +309,8 @@ export default function SocialFeed() {
       
       // First operation: Update likes and likeCount
       try {
+        // Prevent optimistic UI updates to avoid conflicts with Firestore listener
+        // The onSnapshot listener will update the UI when the server confirms the change
         if (isLiked) {
           // Unlike - Remove current user from likes array
           await updateDoc(postRef, {
@@ -325,22 +332,7 @@ export default function SocialFeed() {
         return; // Exit early if the primary operation fails
       }
       
-      // Update local state to reflect like/unlike
-      setPosts(prevPosts => 
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            return { 
-              ...post, 
-              liked: !isLiked,
-              likeCount: isLiked ? post.likeCount - 1 : post.likeCount + 1
-            };
-          }
-          return post;
-        })
-      );
-      
       // Second operation: Add point to post creator (only if liking, not unliking)
-      // Only attempt this if the first operation succeeded
       if (!isLiked) {
         try {
           // Get post creator info to add points
@@ -365,6 +357,8 @@ export default function SocialFeed() {
     } catch (error) {
       console.error('General error in handleLikeToggle:', error);
       toast.error('Failed to update like');
+    } finally {
+      isProcessingLike.current = null;
     }
   };
   
