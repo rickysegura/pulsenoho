@@ -517,9 +517,9 @@ export default function SocialFeed() {
   return (
     <Card className="bg-white/5 backdrop-blur-sm border-white/10">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-white">Community Feed</CardTitle>
+        <CardTitle className="text-2xl font-semibold text-white">Recent Activity</CardTitle>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* New Post Form */}
         <Card className="bg-white/10 border-white/20">
@@ -733,11 +733,16 @@ export default function SocialFeed() {
                       {/* Post Image */}
                       {post.hasImage && post.imageURL && (
                         <div className="mt-3">
-                          <img 
-                            src={post.imageURL} 
-                            alt="Post image" 
-                            className="w-full h-auto rounded-md border border-white/10 max-h-80 object-contain"
-                          />
+                          <div className="relative w-full rounded-md border border-white/10 overflow-hidden">
+                            <div className="aspect-video flex items-center justify-center bg-gray-900/40">
+                              <img 
+                                src={post.imageURL} 
+                                alt="Post content" 
+                                className="max-w-full max-h-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

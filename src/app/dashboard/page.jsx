@@ -17,6 +17,7 @@ import { MapPin, Users, ArrowRight, Shield } from 'lucide-react';
 import { addSnapshot } from '../../lib/snapshotManager';
 import SocialFeed from '../../components/SocialFeed';
 import Navbar from '@/components/Navbar';
+import UserAvatar from '../../components/UserAvatar';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -186,21 +187,11 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div className="flex items-center gap-3">
-                    {userData.photoURL ? (
-                      <Image
-                        src={userData.photoURL}
-                        alt={`${userData.username}'s avatar`}
-                        width={60}
-                        height={60}
-                        className="rounded-full border-2 border-white/20"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 bg-indigo-700 rounded-full flex items-center justify-center">
-                        <span className="text-xl font-medium">
-                          {userData.username?.charAt(0).toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                    )}
+                    <UserAvatar 
+                      user={userData} 
+                      size="lg" 
+                      className="border-2 border-white/20" 
+                    />
                     
                     <div>
                       <h3 className="font-medium text-lg">{userData.username}</h3>
