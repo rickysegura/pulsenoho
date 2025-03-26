@@ -10,6 +10,7 @@ import { Input } from '../../../components/ui/input';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Search, MessageSquare, Users } from 'lucide-react';
+import UserAvatar from '../../../components/UserAvatar';
 
 export default function NewMessagePage() {
   const { currentUser } = useAuth();
@@ -110,11 +111,7 @@ export default function NewMessagePage() {
                     onClick={() => startConversation(user.id, user.username)}
                   >
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-indigo-700 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-sm font-medium text-white">
-                          {user.username?.charAt(0).toUpperCase() || 'U'}
-                        </span>
-                      </div>
+                      <UserAvatar user={user} className="mr-3" />
                       <div>
                         <p className="font-medium text-white">{user.username || 'Unknown User'}</p>
                         <p className="text-sm text-gray-400">{user.email || ''}</p>

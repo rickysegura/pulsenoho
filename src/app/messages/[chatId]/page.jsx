@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { doc, getDoc, collection, query, orderBy, addDoc, updateDoc, onSnapshot, serverTimestamp, Timestamp, writeBatch, setDoc } from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
+import { doc, getDoc, collection, query, orderBy, addDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../../lib/firebase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-import { ArrowLeft, Send, Image, MessageSquare } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, Send, ImageIcon, MessageSquare, Loader2, X } from 'lucide-react';
 import { addSnapshot, removeSnapshot } from '../../../lib/snapshotManager';
+import UserAvatar from '../../../components/UserAvatar';
 
 export default function ChatDetailPage() {
   const { currentUser } = useAuth();
@@ -24,6 +26,10 @@ export default function ChatDetailPage() {
   const [recipient, setRecipient] = useState(null);
   const messagesEndRef = useRef(null);
   const [messageSending, setMessageSending] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Get recipient info from URL params or try to extract from chatId
   const recipientId = searchParams.get('recipient') || chatId.split('_').find(id => id !== currentUser?.uid);
@@ -66,7 +72,7 @@ export default function ChatDetailPage() {
           const participants = [currentUser.uid, recipientId].sort();
           
           // Create the chat document with initial data
-          await setDoc(chatRef, {
+          await updateDoc(chatRef, {
             participants,
             createdAt: serverTimestamp(),
             lastMessageTimestamp: serverTimestamp(),
@@ -76,7 +82,7 @@ export default function ChatDetailPage() {
               [currentUser.uid]: 0,
               [recipientId]: 0
             }
-          });
+          }, { merge: true });
         } else {
           // Reset unread count for current user when they open the chat
           const unreadCountUpdate = {};
@@ -135,16 +141,74 @@ export default function ChatDetailPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Handle image selection
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+    
+    setSelectedImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  // Handle removing the selected image
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !currentUser || !recipientId || messageSending) {
+    // Check if there's either text or an image to send
+    if ((!newMessage.trim() && !selectedImage) || !currentUser || !recipientId || messageSending) {
       return;
     }
     
     setMessageSending(true);
     
     try {
+      let imageUrl = null;
+      
+      // Upload image if selected
+      if (selectedImage) {
+        setUploadingImage(true);
+        
+        try {
+          const storageRef = ref(storage, `chat_images/${chatId}/${Date.now()}_${selectedImage.name}`);
+          await uploadBytes(storageRef, selectedImage);
+          imageUrl = await getDownloadURL(storageRef);
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast.error('Failed to upload image');
+          setMessageSending(false);
+          setUploadingImage(false);
+          return;
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+      
       // Add message to messages collection
       const messagesRef = collection(db, 'messages', chatId, 'messagesList');
       await addDoc(messagesRef, {
@@ -152,23 +216,32 @@ export default function ChatDetailPage() {
         senderId: currentUser.uid,
         recipientId: recipientId,
         timestamp: serverTimestamp(),
-        read: false
+        read: false,
+        imageUrl: imageUrl
       });
       
       // Update chat document with last message info
       const chatRef = doc(db, 'messages', chatId);
       
+      // Set last message text (prioritize text content, or fallback to [Image] if only an image was sent)
+      const lastMessageText = newMessage.trim() || (imageUrl ? '[Image]' : 'No message');
+      
       // Increment unread count for recipient
       const chatUpdate = {
-        lastMessage: newMessage.trim(),
+        lastMessage: lastMessageText,
         lastMessageTimestamp: serverTimestamp(),
         [`unreadCount.${recipientId}`]: (messages.filter(m => !m.read && m.senderId === currentUser.uid).length + 1)
       };
       
       await updateDoc(chatRef, chatUpdate);
       
-      // Clear input
+      // Clear input and image
       setNewMessage('');
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -282,6 +355,16 @@ export default function ChatDetailPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
+            <Link href={`/profile/${recipientId}`}>
+              <UserAvatar 
+                user={{ 
+                  username: recipientName || recipient?.username || 'Chat',
+                  photoURL: recipient?.photoURL || null
+                }} 
+                size="sm"
+                className="mr-2 cursor-pointer" 
+              />
+            </Link>
             <h1 className="text-xl font-bold">
               {recipientName || recipient?.username || 'Chat'}
             </h1>
@@ -305,6 +388,20 @@ export default function ChatDetailPage() {
                     key={message.id}
                     className={`flex ${message.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}`}
                   >
+                    {message.senderId !== currentUser.uid && (
+                      <div className="mr-2 flex items-end mb-1">
+                        <Link href={`/profile/${recipientId}`}>
+                          <UserAvatar 
+                            user={{ 
+                              username: recipient?.username || 'User',
+                              photoURL: recipient?.photoURL || null
+                            }} 
+                            size="sm"
+                            className="cursor-pointer" 
+                          />
+                        </Link>
+                      </div>
+                    )}
                     <div
                       className={`max-w-[75%] rounded-lg p-3 ${
                         message.senderId === currentUser.uid
@@ -312,7 +409,25 @@ export default function ChatDetailPage() {
                           : 'bg-white/10 border border-white/10 text-gray-200'
                       }`}
                     >
-                      <p className="break-words">{message.text}</p>
+                      {/* Display text message if present */}
+                      {message.text && (
+                        <p className="break-words mb-2">{message.text}</p>
+                      )}
+                      
+                      {/* Display image if present */}
+                      {message.imageUrl && (
+                        <div className="mt-1 mb-2">
+                          <div className="relative h-48 w-full rounded overflow-hidden">
+                            <Image 
+                              src={message.imageUrl}
+                              alt="Shared image"
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className={`text-xs mt-1 ${message.senderId === currentUser.uid ? 'text-indigo-200' : 'text-gray-400'}`}>
                         {formatMessageTime(message.timestamp)}
                       </div>
@@ -336,23 +451,75 @@ export default function ChatDetailPage() {
         )}
       </div>
       
+      {/* Image preview area */}
+      {imagePreview && (
+        <div className="bg-gray-800 p-3 border-t border-white/10">
+          <div className="container mx-auto max-w-3xl px-4">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="text-sm font-medium text-gray-300">Image Preview</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                onClick={handleRemoveImage}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="relative h-40 w-full rounded overflow-hidden border border-white/20">
+              <Image 
+                src={imagePreview}
+                alt="Selected image"
+                fill
+                className="object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Message input area */}
       <div className="flex-none bg-gray-900 pt-2 pb-4 border-t border-white/10">
         <div className="container mx-auto max-w-3xl px-4">
           <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="bg-white/10 border-white/20 text-white"
-              disabled={messageSending}
-            />
+            <div className="relative flex-1">
+              <Input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="bg-white/10 border-white/20 text-white pr-10"
+                disabled={messageSending}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white h-8 w-8 p-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={messageSending}
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+                disabled={messageSending}
+              />
+            </div>
             <Button 
               type="submit" 
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={!newMessage.trim() || messageSending}
+              disabled={(!newMessage.trim() && !selectedImage) || messageSending}
             >
-              <Send className="h-4 w-4" />
+              {messageSending || uploadingImage ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </form>
         </div>
