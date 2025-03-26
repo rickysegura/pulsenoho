@@ -234,7 +234,7 @@ export default function Dashboard() {
           </Card>
           
           {/* Additional Info Card */}
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+          <Card className="bg-white/5 backdrop-blur-sm border-white/10 hidden md:block">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">
                 Quick Actions
