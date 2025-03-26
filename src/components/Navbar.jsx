@@ -279,12 +279,6 @@ export default function Navbar() {
           </div>
           
           <div className="py-4 px-2 space-y-1">
-            <Link href="/" onClick={() => setIsOpen(false)}>
-              <div className="flex items-center px-3 py-2 rounded-md text-gray-300 hover:bg-white/10">
-                <MapPin className="h-5 w-5 mr-3" /> Home
-              </div>
-            </Link>
-            
             <Link href="/venues" onClick={() => setIsOpen(false)}>
               <div className="flex items-center px-3 py-2 rounded-md text-gray-300 hover:bg-white/10">
                 <MapPin className="h-5 w-5 mr-3" /> Venues
