@@ -644,182 +644,180 @@ export default function SocialFeed() {
             )}
           </div>
         ) : (
-          <div className="h-[600px] overflow-y-auto pr-4">
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <Card 
-                  key={post.id} 
-                  className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors"
-                >
-                  <CardContent className="p-4">
-                    {/* Post Header with User Info */}
-                    <div className="flex justify-between items-start mb-2">
-                      <Link href={`/profile/${post.userId}`} className="flex items-center gap-2">
-                        <UserAvatar 
-                          user={{
-                            username: post.username,
-                            photoURL: userDetails[post.userId]?.photoURL
-                          }}
-                          size="md"
-                        />
-                        
-                        <div>
-                          <p className="font-medium text-white">{post.username}</p>
-                          <p className="text-xs text-gray-400 flex items-center">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {post.formattedTime}
-                          </p>
-                        </div>
-                      </Link>
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <Card 
+                key={post.id} 
+                className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors"
+              >
+                <CardContent className="p-4">
+                  {/* Post Header with User Info */}
+                  <div className="flex justify-between items-start mb-2">
+                    <Link href={`/profile/${post.userId}`} className="flex items-center gap-2">
+                      <UserAvatar 
+                        user={{
+                          username: post.username,
+                          photoURL: userDetails[post.userId]?.photoURL
+                        }}
+                        size="md"
+                      />
                       
-                      <div className="flex items-center space-x-2">
-                        {post.userId !== currentUser.uid && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className={
-                              userDetails[post.userId]?.isCurrentUserFollowing
-                                ? "text-indigo-400 hover:text-indigo-300"
-                                : "text-gray-400 hover:text-white"
-                            }
-                            onClick={() => handleFollowToggle(post.userId, userDetails[post.userId]?.isCurrentUserFollowing)}
-                          >
-                            {userDetails[post.userId]?.isCurrentUserFollowing ? (
-                              <User className="h-4 w-4" />
-                            ) : (
-                              <UserPlus className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
-                        
-                        {post.userId === currentUser.uid && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-400 hover:text-red-300"
-                            onClick={() => handleDeletePost(post.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Post Content */}
-                    <div className="mb-3">
-                      {post.text && (
-                        <p className="text-gray-200 whitespace-pre-wrap">
-                          {expandedPost === post.id || post.text.length <= 250 
-                            ? post.text 
-                            : `${post.text.substring(0, 250)}...`}
+                      <div>
+                        <p className="font-medium text-white">{post.username}</p>
+                        <p className="text-xs text-gray-400 flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {post.formattedTime}
                         </p>
-                      )}
-                      
-                      {post.text && post.text.length > 250 && (
-                        <button 
-                          onClick={() => toggleExpandPost(post.id)}
-                          className="text-indigo-400 hover:text-indigo-300 text-sm mt-1"
+                      </div>
+                    </Link>
+                    
+                    <div className="flex items-center space-x-2">
+                      {post.userId !== currentUser.uid && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={
+                            userDetails[post.userId]?.isCurrentUserFollowing
+                              ? "text-indigo-400 hover:text-indigo-300"
+                              : "text-gray-400 hover:text-white"
+                          }
+                          onClick={() => handleFollowToggle(post.userId, userDetails[post.userId]?.isCurrentUserFollowing)}
                         >
-                          {expandedPost === post.id ? 'Show less' : 'Read more'}
-                        </button>
+                          {userDetails[post.userId]?.isCurrentUserFollowing ? (
+                            <User className="h-4 w-4" />
+                          ) : (
+                            <UserPlus className="h-4 w-4" />
+                          )}
+                        </Button>
                       )}
                       
-                      {/* Post Image */}
-                      {post.hasImage && post.imageURL && (
-                        <div className="mt-3">
-                          <div className="relative w-full rounded-md border border-white/10 overflow-hidden">
-                            <div className="aspect-video flex items-center justify-center bg-gray-900/40">
-                              <img 
-                                src={post.imageURL} 
-                                alt="Post content" 
-                                className="max-w-full max-h-full object-contain"
-                                loading="lazy"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                      {post.userId === currentUser.uid && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-400 hover:text-red-300"
+                          onClick={() => handleDeletePost(post.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                    
-                    {/* Post Actions */}
-                    <div className="flex items-center space-x-4 mt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`hover:bg-white/10 flex items-center ${
-                          post.liked ? 'text-red-500' : 'text-gray-400 hover:text-white'
-                        }`}
-                        onClick={() => handleLikeToggle(post.id, post.liked)}
-                      >
-                        <Heart className={`h-4 w-4 mr-1 ${post.liked ? 'fill-red-500' : ''}`} />
-                        <span>{post.likeCount || 0}</span>
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={`hover:bg-white/10 flex items-center ${
-                          activeCommentPostId === post.id ? 'text-indigo-400' : 'text-gray-400 hover:text-white'
-                        }`}
-                        onClick={() => toggleCommentForm(post.id)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        <span>{post.comments?.length || 0}</span>
-                      </Button>
-                    </div>
-                    
-                    {/* Comment Form */}
-                    {activeCommentPostId === post.id && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <div className="flex space-x-2">
-                          <Input
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="bg-white/10 border-white/20 text-white flex-1"
-                          />
-                          <Button 
-                            onClick={() => handleCommentSubmit(post.id)}
-                            className="bg-indigo-600 hover:bg-indigo-700"
-                            disabled={!commentText.trim()}
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
+                  </div>
+                  
+                  {/* Post Content */}
+                  <div className="mb-3">
+                    {post.text && (
+                      <p className="text-gray-200 whitespace-pre-wrap">
+                        {expandedPost === post.id || post.text.length <= 250 
+                          ? post.text 
+                          : `${post.text.substring(0, 250)}...`}
+                      </p>
                     )}
                     
-                    {/* Comments */}
-                    {post.comments && post.comments.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
-                        <h4 className="text-sm font-medium text-gray-300">Comments</h4>
-                        {post.comments.map((comment) => (
-                          <div key={comment.id} className="flex space-x-2">
-                            <UserAvatar 
-                              user={{
-                                username: comment.username,
-                                photoURL: userDetails[comment.userId]?.photoURL
-                              }}
-                              size="sm"
-                              className="flex-shrink-0"
+                    {post.text && post.text.length > 250 && (
+                      <button 
+                        onClick={() => toggleExpandPost(post.id)}
+                        className="text-indigo-400 hover:text-indigo-300 text-sm mt-1"
+                      >
+                        {expandedPost === post.id ? 'Show less' : 'Read more'}
+                      </button>
+                    )}
+                    
+                    {/* Post Image */}
+                    {post.hasImage && post.imageURL && (
+                      <div className="mt-3">
+                        <div className="relative w-full rounded-md border border-white/10 overflow-hidden">
+                          <div className="aspect-video flex items-center justify-center bg-gray-900/40">
+                            <img 
+                              src={post.imageURL} 
+                              alt="Post content" 
+                              className="max-w-full max-h-full object-contain"
+                              loading="lazy"
                             />
-                            <div className="flex-1 bg-white/5 p-2 rounded-md">
-                              <div className="flex justify-between items-center">
-                                <Link href={`/profile/${comment.userId}`} className="text-sm font-medium text-white hover:underline">
-                                  {comment.username}
-                                </Link>
-                                <span className="text-xs text-gray-400">{comment.formattedTime}</span>
-                              </div>
-                              <p className="text-sm text-gray-300 mt-1">{comment.text}</p>
-                            </div>
                           </div>
-                        ))}
+                        </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </div>
+                  
+                  {/* Post Actions */}
+                  <div className="flex items-center space-x-4 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`hover:bg-white/10 flex items-center ${
+                        post.liked ? 'text-red-500' : 'text-gray-400 hover:text-white'
+                      }`}
+                      onClick={() => handleLikeToggle(post.id, post.liked)}
+                    >
+                      <Heart className={`h-4 w-4 mr-1 ${post.liked ? 'fill-red-500' : ''}`} />
+                      <span>{post.likeCount || 0}</span>
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`hover:bg-white/10 flex items-center ${
+                        activeCommentPostId === post.id ? 'text-indigo-400' : 'text-gray-400 hover:text-white'
+                      }`}
+                      onClick={() => toggleCommentForm(post.id)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      <span>{post.comments?.length || 0}</span>
+                    </Button>
+                  </div>
+                  
+                  {/* Comment Form */}
+                  {activeCommentPostId === post.id && (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <div className="flex space-x-2">
+                        <Input
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="Add a comment..."
+                          className="bg-white/10 border-white/20 text-white flex-1"
+                        />
+                        <Button 
+                          onClick={() => handleCommentSubmit(post.id)}
+                          className="bg-indigo-600 hover:bg-indigo-700"
+                          disabled={!commentText.trim()}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Comments */}
+                  {post.comments && post.comments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
+                      <h4 className="text-sm font-medium text-gray-300">Comments</h4>
+                      {post.comments.map((comment) => (
+                        <div key={comment.id} className="flex space-x-2">
+                          <UserAvatar 
+                            user={{
+                              username: comment.username,
+                              photoURL: userDetails[comment.userId]?.photoURL
+                            }}
+                            size="sm"
+                            className="flex-shrink-0"
+                          />
+                          <div className="flex-1 bg-white/5 p-2 rounded-md">
+                            <div className="flex justify-between items-center">
+                              <Link href={`/profile/${comment.userId}`} className="text-sm font-medium text-white hover:underline">
+                                {comment.username}
+                              </Link>
+                              <span className="text-xs text-gray-400">{comment.formattedTime}</span>
+                            </div>
+                            <p className="text-sm text-gray-300 mt-1">{comment.text}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </CardContent>
