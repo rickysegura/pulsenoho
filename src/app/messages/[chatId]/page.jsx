@@ -11,7 +11,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Send, ImageIcon, MessageSquare, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Send, ImageIcon, MessageSquare, Loader2, X, ZoomIn } from 'lucide-react';
 import { addSnapshot, removeSnapshot } from '../../../lib/snapshotManager';
 import UserAvatar from '../../../components/UserAvatar';
 
@@ -30,6 +30,7 @@ export default function ChatDetailPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
+  const [selectedImageForModal, setSelectedImageForModal] = useState(null);
 
   // Get recipient info from URL params or try to extract from chatId
   const recipientId = searchParams.get('recipient') || chatId.split('_').find(id => id !== currentUser?.uid);
@@ -72,7 +73,7 @@ export default function ChatDetailPage() {
           const participants = [currentUser.uid, recipientId].sort();
           
           // Create the chat document with initial data
-          await updateDoc(chatRef, {
+          await setDoc(chatRef, {
             participants,
             createdAt: serverTimestamp(),
             lastMessageTimestamp: serverTimestamp(),
@@ -82,7 +83,7 @@ export default function ChatDetailPage() {
               [currentUser.uid]: 0,
               [recipientId]: 0
             }
-          }, { merge: true });
+          });
         } else {
           // Reset unread count for current user when they open the chat
           const unreadCountUpdate = {};
@@ -140,6 +141,19 @@ export default function ChatDetailPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Add a body overflow hidden when modal is open
+  useEffect(() => {
+    if (selectedImageForModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedImageForModal]);
 
   // Handle image selection
   const handleImageSelect = (e) => {
@@ -294,7 +308,7 @@ export default function ChatDetailPage() {
     messages.forEach(message => {
       const messageDate = message.timestamp ? message.timestamp.toDateString() : 'Unknown';
       
-      if (messageDate !== currentDate) {
+      if (currentDate !== messageDate) {
         if (currentGroup.length > 0) {
           groups.push({
             date: currentDate,
@@ -319,211 +333,254 @@ export default function ChatDetailPage() {
     return groups;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
-        <div className="w-16 h-16 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
-        <p className="mt-4 text-xl">Loading conversation...</p>
-      </div>
-    );
-  }
-
-  // Add a guard to prevent rendering when currentUser is null
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
-        <p className="text-xl">You need to be logged in to view this conversation.</p>
-        <Button 
-          onClick={() => router.push('/login')} 
-          className="mt-4 bg-indigo-600 hover:bg-indigo-700"
-        >
-          Log In
-        </Button>
-      </div>
-    );
-  }
-
-  const messageGroups = groupMessagesByDate(messages);
-
+if (loading) {
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <div className="flex-none">
-        <div className="container mx-auto max-w-3xl p-4">
-          <div className="flex items-center mb-4">
-            <Link href="/messages" className="mr-3">
-              <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href={`/profile/${recipientId}`}>
-              <UserAvatar 
-                user={{ 
-                  username: recipientName || recipient?.username || 'Chat',
-                  photoURL: recipient?.photoURL || null
-                }} 
-                size="sm"
-                className="mr-2 cursor-pointer" 
-              />
-            </Link>
-            <h1 className="text-xl font-bold">
-              {recipientName || recipient?.username || 'Chat'}
-            </h1>
-          </div>
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+      <div className="w-16 h-16 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+      <p className="mt-4 text-xl">Loading conversation...</p>
+    </div>
+  );
+}
+
+// Add a guard to prevent rendering when currentUser is null
+if (!currentUser) {
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+      <p className="text-xl">You need to be logged in to view this conversation.</p>
+      <Button 
+        onClick={() => router.push('/login')} 
+        className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+      >
+        Log In
+      </Button>
+    </div>
+  );
+}
+
+const messageGroups = groupMessagesByDate(messages);
+
+return (
+  <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="flex-none">
+      <div className="container mx-auto max-w-3xl p-4">
+        <div className="flex items-center mb-4">
+          <Link href="/messages" className="mr-3">
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <Link href={`/profile/${recipientId}`}>
+            <UserAvatar 
+              user={{ 
+                username: recipientName || recipient?.username || 'Chat',
+                photoURL: recipient?.photoURL || null
+              }} 
+              size="sm"
+              className="mr-2 cursor-pointer" 
+            />
+          </Link>
+          <h1 className="text-xl font-bold">
+            {recipientName || recipient?.username || 'Chat'}
+          </h1>
         </div>
       </div>
-      
-      <div className="flex-1 overflow-y-auto px-4 pb-4 container mx-auto max-w-3xl">
-        {messageGroups.length > 0 ? (
-          <div className="space-y-6">
-            {messageGroups.map((group, groupIndex) => (
-              <div key={groupIndex} className="space-y-3">
-                <div className="text-center">
-                  <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
-                    {formatMessageDate(group.messages[0].timestamp)}
-                  </span>
-                </div>
-                
-                {group.messages.map((message, index) => (
+    </div>
+    
+    <div className="flex-1 overflow-y-auto px-4 pb-4 container mx-auto max-w-3xl">
+      {messageGroups.length > 0 ? (
+        <div className="space-y-6">
+          {messageGroups.map((group, groupIndex) => (
+            <div key={groupIndex} className="space-y-3">
+              <div className="text-center">
+                <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+                  {formatMessageDate(group.messages[0].timestamp)}
+                </span>
+              </div>
+              
+              {group.messages.map((message, index) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}`}
+                >
+                  {message.senderId !== currentUser.uid && (
+                    <div className="mr-2 flex items-end mb-1">
+                      <Link href={`/profile/${recipientId}`}>
+                        <UserAvatar 
+                          user={{ 
+                            username: recipient?.username || 'User',
+                            photoURL: recipient?.photoURL || null
+                          }} 
+                          size="sm"
+                          className="cursor-pointer" 
+                        />
+                      </Link>
+                    </div>
+                  )}
                   <div
-                    key={message.id}
-                    className={`flex ${message.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}`}
+                    className={`max-w-[75%] rounded-lg p-3 ${
+                      message.senderId === currentUser.uid
+                        ? 'bg-indigo-700 text-white'
+                        : 'bg-white/10 border border-white/10 text-gray-200'
+                    }`}
                   >
-                    {message.senderId !== currentUser.uid && (
-                      <div className="mr-2 flex items-end mb-1">
-                        <Link href={`/profile/${recipientId}`}>
-                          <UserAvatar 
-                            user={{ 
-                              username: recipient?.username || 'User',
-                              photoURL: recipient?.photoURL || null
-                            }} 
-                            size="sm"
-                            className="cursor-pointer" 
-                          />
-                        </Link>
-                      </div>
+                    {/* Display text message if present */}
+                    {message.text && (
+                      <p className="break-words mb-2">{message.text}</p>
                     )}
-                    <div
-                      className={`max-w-[75%] rounded-lg p-3 ${
-                        message.senderId === currentUser.uid
-                          ? 'bg-indigo-700 text-white'
-                          : 'bg-white/10 border border-white/10 text-gray-200'
-                      }`}
-                    >
-                      {/* Display text message if present */}
-                      {message.text && (
-                        <p className="break-words mb-2">{message.text}</p>
-                      )}
-                      
-                      {/* Display image if present */}
-                      {message.imageUrl && (
-                        <div className="mt-1 mb-2">
-                          <div className="relative h-48 w-full rounded overflow-hidden">
+                    
+                    {/* Display image if present - improved responsive version */}
+                    {message.imageUrl && (
+                      <div className="mt-1 mb-2">
+                        <div 
+                          className="relative max-w-full rounded overflow-hidden cursor-pointer"
+                          onClick={() => setSelectedImageForModal(message.imageUrl)}
+                        >
+                          <div className="aspect-auto max-h-64 min-h-32 w-full relative">
                             <Image 
                               src={message.imageUrl}
                               alt="Shared image"
                               fill
                               className="object-contain"
+                              sizes="(max-width: 768px) 100vw, 400px"
                             />
                           </div>
+                          <div className="absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                            <div className="bg-black/60 text-white text-xs px-2 py-1 rounded">
+                              Click to enlarge
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      
-                      <div className={`text-xs mt-1 ${message.senderId === currentUser.uid ? 'text-indigo-200' : 'text-gray-400'}`}>
-                        {formatMessageTime(message.timestamp)}
                       </div>
+                    )}
+                    
+                    <div className={`text-xs mt-1 ${message.senderId === currentUser.uid ? 'text-indigo-200' : 'text-gray-400'}`}>
+                      {formatMessageTime(message.timestamp)}
                     </div>
                   </div>
-                ))}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center p-6 bg-white/5 rounded-lg border border-white/10 max-w-md">
-              <MessageSquare className="h-10 w-10 mx-auto mb-3 text-indigo-400" />
-              <h3 className="text-lg font-medium text-white mb-2">Start the conversation</h3>
-              <p className="text-gray-400 mb-4">
-                Say hello and start chatting with {recipientName || recipient?.username || 'this user'}
-              </p>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Image preview area */}
-      {imagePreview && (
-        <div className="bg-gray-800 p-3 border-t border-white/10">
-          <div className="container mx-auto max-w-3xl px-4">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-sm font-medium text-gray-300">Image Preview</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                onClick={handleRemoveImage}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="relative h-40 w-full rounded overflow-hidden border border-white/20">
-              <Image 
-                src={imagePreview}
-                alt="Selected image"
-                fill
-                className="object-contain"
-              />
-            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      ) : (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center p-6 bg-white/5 rounded-lg border border-white/10 max-w-md">
+            <MessageSquare className="h-10 w-10 mx-auto mb-3 text-indigo-400" />
+            <h3 className="text-lg font-medium text-white mb-2">Start the conversation</h3>
+            <p className="text-gray-400 mb-4">
+              Say hello and start chatting with {recipientName || recipient?.username || 'this user'}
+            </p>
           </div>
         </div>
       )}
-      
-      {/* Message input area */}
-      <div className="flex-none bg-gray-900 pt-2 pb-4 border-t border-white/10">
-        <div className="container mx-auto max-w-3xl px-4">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="bg-white/10 border-white/20 text-white pr-10"
-                disabled={messageSending}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white h-8 w-8 p-0"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={messageSending}
-              >
-                <ImageIcon className="h-5 w-5" />
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-                disabled={messageSending}
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={(!newMessage.trim() && !selectedImage) || messageSending}
-            >
-              {messageSending || uploadingImage ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
+    </div>
+    
+    {/* Image Modal for full-size view */}
+    {selectedImageForModal && (
+      <div 
+        className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+        onClick={() => setSelectedImageForModal(null)}
+      >
+        <div 
+          className="relative max-w-[90vw] max-h-[90vh] rounded overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative w-full h-full min-h-[300px] min-w-[300px]">
+            <Image
+              src={selectedImageForModal}
+              alt="Enlarged image"
+              fill
+              className="object-contain"
+              sizes="90vw"
+              priority
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 h-8 w-8 p-0 bg-black/50 text-white rounded-full hover:bg-black/70"
+            onClick={() => setSelectedImageForModal(null)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
       </div>
+    )}
+    
+    {/* Image preview area */}
+    {imagePreview && (
+      <div className="bg-gray-800 p-3 border-t border-white/10">
+        <div className="container mx-auto max-w-3xl px-4">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-sm font-medium text-gray-300">Image Preview</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+              onClick={handleRemoveImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="relative h-40 w-full rounded overflow-hidden border border-white/20">
+            <Image 
+              src={imagePreview}
+              alt="Selected image"
+              fill
+              className="object-contain"
+            />
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Message input area */}
+    <div className="flex-none bg-gray-900 pt-2 pb-4 border-t border-white/10">
+      <div className="container mx-auto max-w-3xl px-4">
+        <form onSubmit={handleSendMessage} className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="bg-white/10 border-white/20 text-white pr-10"
+              disabled={messageSending}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white h-8 w-8 p-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={messageSending}
+            >
+              <ImageIcon className="h-5 w-5" />
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+              disabled={messageSending}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={(!newMessage.trim() && !selectedImage) || messageSending}
+          >
+            {messageSending || uploadingImage ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </form>
+      </div>
     </div>
-  );
+  </div>
+);
 }
