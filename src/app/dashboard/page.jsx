@@ -13,9 +13,10 @@ import { Badge } from '../../components/ui/badge';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapContext } from '../ClientLayout';
-import { MapPin, List, User, Users, ArrowRight, Shield } from 'lucide-react';
+import { MapPin, Users, ArrowRight, Shield } from 'lucide-react';
 import { addSnapshot } from '../../lib/snapshotManager';
 import SocialFeed from '../../components/SocialFeed';
+import Navbar from '@/components/Navbar';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function Dashboard() {
   const [venueCount, setVenueCount] = useState(0);
   const { currentUser, loading: authLoading } = useAuth();
   const [showMap, setShowMap] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // User profile state
   const [userData, setUserData] = useState({
@@ -119,16 +119,10 @@ export default function Dashboard() {
 
     // Register with snapshot manager instead of manually cleaning up
     addSnapshot(unsubscribe);
-    
-    // No need for explicit cleanup as the snapshot manager handles this
   }, [currentUser]);
 
   const handleVenueCountChange = (count) => {
     setVenueCount(count);
-  };
-
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   if (authLoading || !currentUser) {
@@ -143,83 +137,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       {/* Top Navigation */}
-      <nav className="bg-gray-800 border-b border-white/10 py-3 px-4 z-10">
-        <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="flex items-center">
-          <Image 
-            src="/logo_blue.png" 
-            alt="PulseNoHo Logo" 
-            width={125}
-            height={50}
-          />
-        </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="/venues">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                <MapPin className="h-4 w-4 mr-1" /> Venues
-              </Button>
-            </Link>
-            
-            <Link href="/forum">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                <Users className="h-4 w-4 mr-1" /> Forum
-              </Button>
-            </Link>
-            
-            {userData.isAdmin && (
-              <Link href="/admin">
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                  <Shield className="h-4 w-4 mr-1" /> Admin
-                </Button>
-              </Link>
-            )}
-            
-            <div className="flex items-center">
-              <Badge className="bg-indigo-600 text-white mr-2">{userData.points} pts</Badge>
-              {userData.photoURL ? (
-                <Image
-                  src={userData.photoURL}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="rounded-full border border-white/20"
-                />
-              ) : (
-                <div className="w-8 h-8 bg-indigo-700 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium">
-                    {userData.username?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Mobile user info - always visible */}
-          <div className="md:hidden flex items-center">
-            <Badge className="bg-indigo-600 text-white mr-2">{userData.points} pts</Badge>
-            {userData.photoURL ? (
-              <Image
-                src={userData.photoURL}
-                alt="Profile"
-                width={32}
-                height={32}
-                className="rounded-full border border-white/20"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-indigo-700 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium">
-                  {userData.username?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
+      <Navbar />
       
       {/* Hero Section with Heatmap */}
-      <div className="relative w-full px-4 mt-4">
+      <div className="relative w-full px-4 mt-6">
         {showMap ? (
           <div className="relative w-full py-6">
             <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center border border-white/10">
@@ -233,7 +154,7 @@ export default function Dashboard() {
                 </Link>
               </div>
             </div>
-        </div>
+          </div>
         ) : (
           <div className="w-full h-64 bg-gradient-to-b from-indigo-900 to-gray-900 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -247,7 +168,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-6 mb-20 md:mb-6">
+      <div className="w-full mx-auto flex flex-col md:flex-row gap-6 px-4 mt-6 mb-6">
         <main className="flex-1">
           {/* Social Feed Component */}
           <SocialFeed />
@@ -325,94 +246,18 @@ export default function Dashboard() {
           <Card className="bg-white/5 backdrop-blur-sm border-white/10">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-white">
-                Navigation
+                Quick Actions
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col space-y-2">
-                  {/* On desktop, show all links */}
-                  <div className="hidden md:block">
-                    <Link href="/venues" className="text-gray-300 hover:text-white text-sm flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
-                      All Venues
-                    </Link>
-                  </div>
-                  <div className="hidden md:block">
-                    <Link href="/forum" className="text-gray-300 hover:text-white text-sm flex items-center">
-                      <Users className="h-4 w-4 mr-2 text-indigo-400" />
-                      Community Forum
-                    </Link>
-                  </div>
-
-                  <div className="hidden md:block">
-                    <Link href="/discover" className="text-gray-300 hover:text-white text-sm flex items-center">
-                      <Users className="h-4 w-4 mr-2 text-indigo-400" />
-                        Discover Users
-                    </Link>
-                  </div>
-                  
-                  {/* Show on both mobile and desktop */}
-                  <Link href="/messages" className="text-gray-300 hover:text-white text-sm flex items-center">
-                    <ArrowRight className="h-4 w-4 mr-2 text-indigo-400" />
-                    Messages
-                  </Link>
-                  <Link href="/settings" className="text-gray-300 hover:text-white text-sm flex items-center">
-                    <ArrowRight className="h-4 w-4 mr-2 text-indigo-400" />
-                    Account Settings
-                  </Link>
-                  {userData.isAdmin && (
-                    <Link href="/admin" className="text-gray-300 hover:text-white text-sm flex items-center">
-                      <Shield className="h-4 w-4 mr-2 text-indigo-400" />
-                      Admin Dashboard
-                    </Link>
-                  )}
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-white/10">
-                <AuthComponent />
-              </div>
+              <AuthComponent />
             </CardContent>
           </Card>
         </aside>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-white/10 z-50">
-        <div className="grid grid-cols-4 py-2">
-          <Link href="/" className="flex flex-col items-center justify-center">
-            <div className="p-1 text-white">
-              <MapPin className="h-5 w-5 mx-auto" />
-              <span className="text-xs mt-1 block">Home</span>
-            </div>
-          </Link>
-          
-          <Link href="/venues" className="flex flex-col items-center justify-center">
-            <div className="p-1 text-white">
-              <List className="h-5 w-5 mx-auto" />
-              <span className="text-xs mt-1 block">Venues</span>
-            </div>
-          </Link>
-          
-          <Link href="/forum" className="flex flex-col items-center justify-center">
-            <div className="p-1 text-white">
-              <Users className="h-5 w-5 mx-auto" />
-              <span className="text-xs mt-1 block">Forum</span>
-            </div>
-          </Link>
-          
-          <Link href={`/profile/${currentUser.uid}`} className="flex flex-col items-center justify-center">
-            <div className="p-1 text-white">
-              <User className="h-5 w-5 mx-auto" />
-              <span className="text-xs mt-1 block">Profile</span>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Footer - Hide on mobile */}
-      <div className="hidden md:block">
-        <Footer />
-      </div>
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
