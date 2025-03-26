@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MessageSquare, ArrowLeft, Search, Users } from 'lucide-react';
 import { addSnapshot, removeSnapshot } from '../../lib/snapshotManager';
+import UserAvatar from '../../components/UserAvatar';
 
 export default function MessagesPage() {
   const { currentUser } = useAuth();
@@ -218,11 +219,7 @@ export default function MessagesPage() {
                       onClick={() => startNewConversation(user.id, user.username)}
                     >
                       <div className="flex items-center">
-                        <div className="w-8 h-8 bg-indigo-700 rounded-full flex items-center justify-center mr-2">
-                          <span className="text-sm font-medium text-white">
-                            {user.username?.charAt(0).toUpperCase() || 'U'}
-                          </span>
-                        </div>
+                        <UserAvatar user={user} size="sm" className="mr-2" />
                         <div>
                           <p className="text-sm font-medium text-white">{user.username || 'Unknown User'}</p>
                           <p className="text-xs text-gray-400">{user.email || ''}</p>
@@ -252,11 +249,13 @@ export default function MessagesPage() {
                   <Link href={`/messages/${conversation.id}`} key={conversation.id}>
                     <div className="flex items-center justify-between p-3 hover:bg-white/10 rounded-md cursor-pointer">
                       <div className="flex items-center flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-indigo-700 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-sm font-medium text-white">
-                            {conversation.username?.charAt(0).toUpperCase() || 'U'}
-                          </span>
-                        </div>
+                        <UserAvatar 
+                          user={{ 
+                            username: conversation.username,
+                            photoURL: conversation.photoURL
+                          }} 
+                          className="mr-3" 
+                        />
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center">
