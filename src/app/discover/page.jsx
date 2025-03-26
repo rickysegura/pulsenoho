@@ -174,38 +174,75 @@ export default function DiscoverPage() {
 
   // Follow/unfollow a user
   const handleFollowToggle = async (e, userId, isCurrentlyFollowing) => {
-    e.preventDefault(); // Prevent navigation to profile
-    e.stopPropagation(); // Prevent event bubbling
+    e.preventDefault();
+    e.stopPropagation();
     
     if (!currentUser || followActionInProgress === userId) return;
     
     setFollowActionInProgress(userId);
     
     try {
-      // Update current user's following list
+      // Get references
       const currentUserRef = doc(db, 'users', currentUser.uid);
-      
-      // Update target user's followers list
       const targetUserRef = doc(db, 'users', userId);
       
+      // First, get the current state of both users to work with the exact arrays
+      const [currentUserSnap, targetUserSnap] = await Promise.all([
+        getDoc(currentUserRef),
+        getDoc(targetUserRef)
+      ]);
+      
+      if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
+        throw new Error("One of the user documents doesn't exist");
+      }
+      
+      const currentUserData = currentUserSnap.data();
+      const targetUserData = targetUserSnap.data();
+      
+      // Get the current arrays or initialize empty ones
+      const currentUserFollowing = currentUserData.following || [];
+      const targetUserFollowers = targetUserData.followers || [];
+      
       if (isCurrentlyFollowing) {
-        // Unfollow
-        await updateDoc(currentUserRef, {
-          following: arrayRemove(userId)
-        });
+        // UNFOLLOW
         
-        await updateDoc(targetUserRef, {
-          followers: arrayRemove(currentUser.uid)
-        });
+        // Remove userId from current user's following array
+        // First create a clean copy without the target ID
+        const newFollowing = currentUserFollowing.filter(id => id !== userId);
         
-        // Update local state
+        // Update only the following array in current user's document
+        await updateDoc(currentUserRef, { following: newFollowing });
+        
+        // Remove currentUser.uid from target user's followers array
+        // First create a clean copy without the current user's ID
+        const newFollowers = targetUserFollowers.filter(id => id !== currentUser.uid);
+        
+        // Update only the followers array in target user's document
+        await updateDoc(targetUserRef, { followers: newFollowers });
+      } else {
+        // FOLLOW
+        
+        // Add userId to current user's following array if not already there
+        if (!currentUserFollowing.includes(userId)) {
+          const newFollowing = [...currentUserFollowing, userId];
+          await updateDoc(currentUserRef, { following: newFollowing });
+        }
+        
+        // Add currentUser.uid to target user's followers array if not already there
+        if (!targetUserFollowers.includes(currentUser.uid)) {
+          const newFollowers = [...targetUserFollowers, currentUser.uid];
+          await updateDoc(targetUserRef, { followers: newFollowers });
+        }
+      }
+      
+      // Update local state
+      if (isCurrentlyFollowing) {
         setUserFollowingMap(prev => {
           const updated = {...prev};
           delete updated[userId];
           return updated;
         });
         
-        // Update users list display
         setUsers(prevUsers => 
           prevUsers.map(user => {
             if (user.id === userId) {
@@ -218,24 +255,12 @@ export default function DiscoverPage() {
             return user;
           })
         );
-        
       } else {
-        // Follow
-        await updateDoc(currentUserRef, {
-          following: arrayUnion(userId)
-        });
-        
-        await updateDoc(targetUserRef, {
-          followers: arrayUnion(currentUser.uid)
-        });
-        
-        // Update local state
         setUserFollowingMap(prev => ({
           ...prev,
           [userId]: true
         }));
         
-        // Update users list display
         setUsers(prevUsers => 
           prevUsers.map(user => {
             if (user.id === userId) {
@@ -252,7 +277,9 @@ export default function DiscoverPage() {
       
     } catch (error) {
       console.error('Error updating follow status:', error);
-      toast.error('Failed to update follow status');
+      console.error('Error details:', error.code, error.message, error.stack);
+      // Show more detailed error message
+      toast.error(`Follow action failed: ${error.message}`);
     } finally {
       setFollowActionInProgress(null);
     }
