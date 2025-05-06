@@ -86,7 +86,7 @@ export default function About() {
                                 
                                 <div className="flex-1 space-y-4 text-gray-300">
                                     <p>
-                                        Hi there! I'm a passionate web developer and NoHo local who wanted to create something meaningful for our community. PulseNoHo was born from countless experiences of walking into venues with unexpected energy levels – sometimes wanting quiet when it was busy, or seeking vibrant energy when it was dead.
+                                        Hi there! I'm a passionate software engineer and NoHo local who wanted to create something meaningful for our community. PulseNoHo was born from countless experiences of walking into venues with unexpected energy levels – sometimes wanting quiet when it was busy, or seeking vibrant energy when it was dead.
                                     </p>
                                     
                                     <p>
