@@ -54,7 +54,7 @@ export default function LandingPage() {
               />
             </div>
             <p className="text-xl md:text-2xl text-gray-200 mb-8">
-              Check the vibe before you arrive. Real-time busyness levels for North Hollywood venues.
+              Check the vibe before you arrive. Real-time activity levels for venues in North Hollywood.
             </p>
             
             <div className="flex flex-wrap justify-center gap-4">
@@ -94,7 +94,7 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MapPin className="h-8 w-8 text-indigo-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Find Venues</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">Find Venues</h3>
                 <p className="text-gray-300">
                   Discover the best spots in North Hollywood with our interactive map and venue listings.
                 </p>
@@ -106,9 +106,9 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Clock className="h-8 w-8 text-indigo-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Check Busyness</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">Check Activity</h3>
                 <p className="text-gray-300">
-                  See real-time busyness levels reported by the community. Never walk into a packed venue again!
+                  See real-time activity reported by the community. Know what's going on at your favorite venues!
                 </p>
               </CardContent>
             </Card>
@@ -118,7 +118,7 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Star className="h-8 w-8 text-indigo-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Share Vibes</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">Share Vibes</h3>
                 <p className="text-gray-300">
                   Help the community by reporting your experience. Earn points and build your profile.
                 </p>
