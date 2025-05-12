@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Github, Mail, ArrowLeft, Code, MapPin, Coffee, Users, Twitter } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -47,7 +48,20 @@ export default function About() {
                                 <p>
                                     Users can check in at their favorite spots, rate the current energy level, and leave feedback for others. This creates a living, breathing map of NoHo's social scene that updates in real-time, helping everyone find exactly the kind of atmosphere they're looking for.
                                 </p>
+
+                                <div className="flex justify-center mb-6 relative h-100 w-full">
+                                    <Image 
+                                        src="/demo.png" 
+                                        alt="PulseNoHo Demo" 
+                                        fill
+                                        className="drop-shadow-md object-contain"
+                                    />
+                                </div>
                                 
+                                <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+                                    Features
+                                </h3>
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
                                     <div className="bg-white/10 p-4 rounded-lg text-center">
                                         <Coffee className="h-8 w-8 mx-auto mb-2 text-indigo-400" />
