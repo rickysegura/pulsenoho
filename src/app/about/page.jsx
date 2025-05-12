@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Github, Mail, ArrowLeft, Code, MapPin, Coffee, Users } from 'lucide-react';
+import { Github, Mail, ArrowLeft, Code, MapPin, Coffee, Users, Twitter } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import Footer from '../../components/Footer';
@@ -34,7 +34,7 @@ export default function About() {
                 <div className="container mx-auto max-w-4xl">
                     <Card className="bg-white/5 backdrop-blur-sm border-white/10 mb-12">
                         <CardContent className="p-8">
-                            <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
                                 <MapPin className="h-6 w-6 mr-2 text-indigo-400" /> 
                                 About The Project
                             </h2>
@@ -74,7 +74,7 @@ export default function About() {
                     {/* Developer Section */}
                     <Card className="bg-white/5 backdrop-blur-sm border-white/10">
                         <CardContent className="p-8">
-                            <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                            <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
                                 <Code className="h-6 w-6 mr-2 text-indigo-400" /> 
                                 About The Developer
                             </h2>
@@ -94,17 +94,10 @@ export default function About() {
                                     </p>
                                     
                                     <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                                        <Button className="bg-indigo-600 hover:bg-indigo-700">
-                                            <Github className="h-4 w-4 mr-2" />
-                                            <a href="https://github.com/rickysegura" target="_blank" rel="noopener noreferrer">
-                                                GitHub
-                                            </a>
-                                        </Button>
-                                        
-                                        <Button className="bg-white/10 hover:bg-white/20">
-                                            <Mail className="h-4 w-4 mr-2" />
-                                            <a href="mailto:rickysegura@pm.me">
-                                                Contact Me
+                                        <Button className="bg-black hover:bg-gray-800">
+                                            <Twitter className="h-4 w-4 mr-2" />
+                                            <a href="https://twitter.com/rickysegura_" target="_blank" rel="noopener noreferrer">
+                                                Twitter
                                             </a>
                                         </Button>
                                     </div>
