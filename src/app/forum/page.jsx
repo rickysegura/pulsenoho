@@ -436,7 +436,7 @@ export default function Forum() {
             // Chat room selection view
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Available Chat Rooms</h2>
+                <h2 className="text-xl text-white font-semibold">Available Chat Rooms</h2>
                 <Button 
                   onClick={() => setShowNewRoomModal(true)} 
                   className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -465,7 +465,7 @@ export default function Forum() {
                       className="bg-white/5 border-white/10 transition-colors"
                     >
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">{room.title}</CardTitle>
+                        <CardTitle className="text-lg text-white">{room.title}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <p className="text-gray-300 text-sm line-clamp-2 mb-2">

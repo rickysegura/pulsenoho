@@ -194,7 +194,7 @@ export default function Dashboard() {
                     />
                     
                     <div>
-                      <h3 className="font-medium text-lg">{userData.username}</h3>
+                      <h3 className="font-medium text-white text-lg">{userData.username}</h3>
                       <div className="flex items-center">
                         <Badge className="bg-indigo-600 text-white">
                           {userData.points} points
